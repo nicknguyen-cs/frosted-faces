@@ -1,26 +1,48 @@
 @import "tailwindcss";
-
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@plugin "@tailwindcss/typography";
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-sand-50: #FAF8F5;
+  --color-sand-100: #F3EDE5;
+  --color-sand-200: #E8DFD1;
+  --color-terracotta: #C4704B;
+  --color-terracotta-dark: #A85D3D;
+  --color-sage: #7D8E7B;
+  --color-sage-light: #9AAF98;
+  --color-clay: #A67C5A;
+  --color-charcoal: #2C2C2C;
+  --color-stone: #6B6560;
+  --color-pebble: #9C9590;
+  --color-amber: #D4A84B;
+
+  --font-heading: "Plus Jakarta Sans", sans-serif;
+  --font-body: "Inter", sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--color-sand-50);
+  color: var(--color-stone);
+  font-family: var(--font-body);
+}
+
+/* Dog ticker marquee */
+@keyframes ticker-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+@keyframes ring-pulse {
+  0%, 100% { opacity: 0.3; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.08); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ticker-track,
+  .ticker-track * {
+    animation-play-state: paused !important;
+  }
 }

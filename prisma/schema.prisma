@@ -1,0 +1,60 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model Dog {
+  id                String   @id @default(cuid())
+  slug              String   @unique
+  name              String
+  breed             String
+  breedSecondary    String?
+  age               String
+  ageCategory       String
+  sex               String
+  size              String
+  weight            Float
+  color             String
+  status            String   @default("available")
+  fosterLocation    String?
+  dateAdded         DateTime @default(now())
+  tagline           String
+  bio               String
+  personalityTraits String
+  energyLevel       String
+  goodWithDogs      Boolean?
+  goodWithCats      Boolean?
+  goodWithKids      Boolean?
+  houseTrained      Boolean?
+  spayedNeutered    Boolean  @default(false)
+  vaccinated        Boolean  @default(false)
+  microchipped      Boolean  @default(false)
+  specialNeeds      String?
+  adoptionFee       Float
+  photos            Photo[]
+}
+
+model Photo {
+  id     String @id @default(cuid())
+  url    String
+  alt    String
+  width  Int
+  height Int
+  order  Int    @default(0)
+  dogId  String
+  dog    Dog    @relation(fields: [dogId], references: [id], onDelete: Cascade)
+}
+
+model AdoptionInquiry {
+  id        String   @id @default(cuid())
+  dogId     String
+  name      String
+  email     String
+  phone     String
+  message   String
+  createdAt DateTime @default(now())
+}

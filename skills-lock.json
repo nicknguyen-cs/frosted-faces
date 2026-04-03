@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "skills": {
+    "contentstack-vibe-docs": {
+      "source": "timbenniks/contentstack-vibe-docs",
+      "sourceType": "github",
+      "computedHash": "852ad25b6e300f18d7256d02204444a6f2c63424b2f64607c1d3409c561da3e5"
+    },
+    "contentstack-mcp": {
+      "source": "local",
+      "sourceType": "local",
+      "computedHash": ""
+    }
+  }
+}

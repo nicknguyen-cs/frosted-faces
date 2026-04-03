@@ -1,65 +1,102 @@
-import Image from "next/image";
+import { getHomePage, getFeaturedDogs } from "@/lib/contentstack";
+import type { LivePreviewParams } from "@/lib/contentstack";
+import Container from "@/components/layout/Container";
+import Hero from "@/components/home/Hero";
+import FeaturedDogs from "@/components/home/FeaturedDogs";
+import CategoryBrowser from "@/components/home/CategoryBrowser";
+import HowItWorks from "@/components/home/HowItWorks";
+import MissionCTA from "@/components/home/MissionCTA";
 
-export default function Home() {
+interface PageProps {
+  searchParams: Promise<LivePreviewParams>;
+}
+
+export default async function HomePage({ searchParams }: PageProps) {
+  const params = await searchParams;
+  const homePage = await getHomePage(params);
+
+  if (!homePage) return null;
+
+  // Pre-fetch featured dogs if a featured_dogs block exists
+  const featuredBlock = homePage.sections?.find((s) => "featured_dogs" in s);
+  const dogLimit = featuredBlock && "featured_dogs" in featuredBlock
+    ? (featuredBlock.featured_dogs.limit ?? 3)
+    : 3;
+  const dogs = featuredBlock
+    ? await getFeaturedDogs(dogLimit, params)
+    : [];
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+    <div {...(homePage.$ && homePage.$.sections)}>
+      {homePage.sections?.map((section, index) => {
+        if ("hero" in section) {
+          const data = section.hero;
+          return (
+            <div key={index} {...(homePage.$?.[`sections__${index}`])}>
+              <Hero
+                heading={data.heading}
+                description={data.description}
+                imageUrl={data.image?.url}
+                ctaText={data.cta_text}
+                ctaLink={data.cta_link}
+                editTags={data.$}
+              />
+            </div>
+          );
+        }
+
+        if ("featured_dogs" in section) {
+          const data = section.featured_dogs;
+          return (
+            <div key={index} {...(homePage.$?.[`sections__${index}`])}>
+              <Container className="py-14">
+                <FeaturedDogs dogs={dogs} heading={data.heading} editTags={data.$} />
+              </Container>
+            </div>
+          );
+        }
+
+        if ("browse_by_type" in section) {
+          const data = section.browse_by_type;
+          return (
+            <div key={index} {...(homePage.$?.[`sections__${index}`])}>
+              <CategoryBrowser
+                categories={data.categories}
+                editTags={data.$}
+              />
+            </div>
+          );
+        }
+
+        if ("how_it_works" in section) {
+          const data = section.how_it_works;
+          return (
+            <div key={index} {...(homePage.$?.[`sections__${index}`])}>
+              <HowItWorks
+                steps={data.steps}
+                editTags={data.$}
+              />
+            </div>
+          );
+        }
+
+        if ("mission_cta" in section) {
+          const data = section.mission_cta;
+          return (
+            <div key={index} {...(homePage.$?.[`sections__${index}`])}>
+              <MissionCTA
+                heading={data.heading}
+                description={data.description}
+                ctaText={data.cta_text}
+                ctaLink={data.cta_link}
+                editTags={data.$}
+              />
+            </div>
+          );
+        }
+
+        return null;
+      })}
     </div>
   );
 }
