@@ -7,7 +7,6 @@ import Button from "@/components/ui/Button";
 const links = [
   { label: "Home", href: "/" },
   { label: "Our Dogs", href: "/dogs" },
-  { label: "About", href: "/about" },
 ];
 
 export default function Navbar() {

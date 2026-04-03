@@ -1,0 +1,442 @@
+---
+name: contentstack-visual-builder
+description: >-
+  Implementation guide for Contentstack Visual Builder with data-cslp tags in
+  Next.js. Covers modular blocks (schema, rendering, three-level CSLP tagging),
+  group field CSLP patterns, content type schema best practices (defaults, enums,
+  file fields, field_metadata), live preview debugging, and common pitfalls.
+  Use when building Visual Builder-enabled pages, adding data-cslp tags, creating
+  modular block content types, or debugging live preview issues.
+license: MIT
+metadata:
+  author: contentstack
+  version: "1.0"
+  last_updated: "2026-04-03"
+---
+
+# Contentstack Visual Builder Implementation Guide
+
+Practical patterns for implementing Visual Builder with data-cslp tags in Next.js, learned from building a production site.
+
+## data-cslp Tag Format
+
+The `data-cslp` attribute tells Visual Builder which field to edit:
+
+```
+{content_type_uid}.{entry_uid}.{locale}.{field_path}
+```
+
+You never write these manually. Contentstack's `addEditableTags` utility generates them and attaches them to a `$` property on the entry/block object. Spread them onto elements:
+
+```tsx
+<h1 {...(entry.$ && entry.$.title)}>{entry.title}</h1>
+```
+
+## Visual Builder Client Setup (Next.js)
+
+Create a client component that initializes the SDK:
+
+```tsx
+"use client";
+import { useEffect } from "react";
+import contentstack from "@contentstack/delivery-sdk";
+import ContentstackLivePreview from "@contentstack/live-preview-utils";
+import type { IStackSdk } from "@contentstack/live-preview-utils";
+
+export default function ContentstackVisualBuilder() {
+  useEffect(() => {
+    const stack = contentstack.stack({
+      apiKey: process.env.NEXT_PUBLIC_CONTENTSTACK_API_KEY!,
+      deliveryToken: "unused-on-client",
+      environment: process.env.NEXT_PUBLIC_CONTENTSTACK_ENVIRONMENT!,
+      region: process.env.NEXT_PUBLIC_CONTENTSTACK_REGION || "us",
+      live_preview: {
+        enable: true,
+        host: "rest-preview.contentstack.com",
+      },
+    });
+
+    ContentstackLivePreview.init({
+      ssr: true,
+      enable: true,
+      mode: "builder",
+      stackSdk: stack.config as unknown as IStackSdk,
+      stackDetails: {
+        apiKey: process.env.NEXT_PUBLIC_CONTENTSTACK_API_KEY!,
+        environment: process.env.NEXT_PUBLIC_CONTENTSTACK_ENVIRONMENT!,
+      },
+      editButton: { enable: true },
+      cleanCslpOnProduction: true,
+    });
+  }, []);
+
+  return null;
+}
+```
+
+Include it in your root layout. The `cleanCslpOnProduction` flag strips `data-cslp` attributes in production.
+
+## Server-Side: addEditableTags
+
+Call `addEditableTags` after fetching an entry to populate the `$` property:
+
+```typescript
+import contentstack from "@contentstack/delivery-sdk";
+
+function addEditTags(entry: unknown, contentTypeUid: string, locale = "en-us") {
+  if (entry) {
+    contentstack.Utils.addEditableTags(entry as any, contentTypeUid, true, locale);
+  }
+}
+```
+
+The third argument (`true`) enables nested tag generation for groups, modular blocks, and references.
+
+## Live Preview Query Params
+
+For SSR mode, Contentstack sends query params to your page: `?live_preview=hash&entry_uid=...&content_type_uid=...`. Your page must read these and pass them to the stack:
+
+```typescript
+export interface LivePreviewParams {
+  live_preview?: string;
+  entry_uid?: string;
+  content_type_uid?: string;
+}
+
+function applyLivePreview(stack, params: LivePreviewParams, defaultContentType: string) {
+  if (params.live_preview) {
+    stack.livePreviewQuery({
+      live_preview: params.live_preview,
+      contentTypeUid: params.content_type_uid || defaultContentType,
+      entryUid: params.entry_uid || "",
+    });
+  }
+}
+```
+
+**Important:** Create a fresh stack instance per preview request to avoid cross-session data leakage.
+
+---
+
+## Modular Blocks
+
+### Content Type Schema
+
+Modular blocks use `data_type: "blocks"` with `multiple: true` (required by Contentstack):
+
+```json
+{
+  "display_name": "Sections",
+  "uid": "sections",
+  "data_type": "blocks",
+  "multiple": true,
+  "blocks": [
+    {
+      "title": "Hero",
+      "uid": "hero",
+      "autoEdit": true,
+      "schema": [
+        { "uid": "heading", "data_type": "text", ... },
+        { "uid": "image", "data_type": "file", ... }
+      ]
+    },
+    {
+      "title": "Featured Content",
+      "uid": "featured",
+      "autoEdit": true,
+      "schema": [
+        { "uid": "heading", "data_type": "text", ... },
+        { "uid": "limit", "data_type": "number", ... }
+      ]
+    }
+  ]
+}
+```
+
+**Key:** `multiple` MUST be `true` for blocks — Contentstack rejects the update otherwise.
+
+### API Response Format
+
+Modular blocks return as an array of single-key objects:
+
+```json
+{
+  "sections": [
+    { "hero": { "heading": "Welcome", "image": { "url": "..." } } },
+    { "featured": { "heading": "Featured", "limit": 3 } }
+  ]
+}
+```
+
+### TypeScript Types
+
+Use a discriminated union:
+
+```typescript
+export type PageSection =
+  | { hero: HeroBlock }
+  | { featured: FeaturedBlock }
+  | { cta: CTABlock };
+
+export interface PageEntry {
+  uid: string;
+  title: string;
+  sections: PageSection[];
+  $?: EditableTags;
+}
+```
+
+### Three-Level CSLP Tagging (Critical)
+
+For Visual Builder to support **add, delete, and reorder** of modular blocks, you need three levels of tags:
+
+```tsx
+{/* Level 1: Container — marks the modular blocks field */}
+<div {...(entry.$ && entry.$.sections)}>
+
+  {entry.sections?.map((section, index) => {
+
+    if ("hero" in section) {
+      const data = section.hero;
+      return (
+        {/* Level 2: Block item — uses PARENT entry's $ with field__index */}
+        <div key={index} {...(entry.$?.[`sections__${index}`])}>
+
+          {/* Level 3: Inner fields — uses block's own $ */}
+          <Hero editTags={data.$} ... />
+
+        </div>
+      );
+    }
+  })}
+</div>
+```
+
+**Common mistake:** Using `data.$` for the block-level wrapper. The block item tag MUST come from the **parent entry's** `$` using the `field__${index}` pattern. The block's own `$` is for inner field tags only.
+
+### Block Renderer Pattern
+
+```tsx
+export default async function Page() {
+  const entry = await getPage();
+
+  return (
+    <div {...(entry.$ && entry.$.sections)}>
+      {entry.sections?.map((section, index) => {
+        if ("hero" in section) {
+          return (
+            <div key={index} {...(entry.$?.[`sections__${index}`])}>
+              <HeroComponent {...section.hero} editTags={section.hero.$} />
+            </div>
+          );
+        }
+        if ("cta" in section) {
+          return (
+            <div key={index} {...(entry.$?.[`sections__${index}`])}>
+              <CTAComponent {...section.cta} editTags={section.cta.$} />
+            </div>
+          );
+        }
+        return null;
+      })}
+    </div>
+  );
+}
+```
+
+---
+
+## Group Fields (Multiple)
+
+### CSLP Tagging for Add/Reorder
+
+Group fields with `multiple: true` follow the same container + item pattern:
+
+```tsx
+{/* Container gets the field tag — enables "add" affordance */}
+<div {...(editTags && editTags.categories)}>
+
+  {categories.map((cat, index) => (
+    {/* Each item gets field__index — enables reorder/delete */}
+    <div key={index} {...(editTags && editTags[`categories__${index}`])}>
+
+      {/* Inner fields use item's own $ */}
+      <h3 {...(cat.$ && cat.$.title)}>{cat.title}</h3>
+      <p {...(cat.$ && cat.$.description)}>{cat.description}</p>
+
+    </div>
+  ))}
+</div>
+```
+
+### Empty State Placeholder
+
+When a group array is empty, the container div has zero height and Visual Builder has nothing to click. Add a visible placeholder:
+
+```tsx
+<div {...(editTags && editTags.items)}>
+  {items.length === 0 && (
+    <div className="col-span-full rounded-2xl border-2 border-dashed border-gray-300 p-8 text-center text-sm text-gray-400">
+      Add items to get started
+    </div>
+  )}
+  {items.map((item, index) => (
+    <div key={index} {...(editTags && editTags[`items__${index}`])}>
+      ...
+    </div>
+  ))}
+</div>
+```
+
+---
+
+## Content Type Schema Best Practices
+
+### Field Metadata and Defaults
+
+Set `default_value` in `field_metadata` so new instances come pre-populated in the CMS:
+
+```json
+{
+  "uid": "heading",
+  "data_type": "text",
+  "field_metadata": {
+    "default_value": "Your heading here",
+    "description": "Main heading for this section",
+    "version": 3
+  }
+}
+```
+
+For multiline text:
+```json
+{
+  "uid": "description",
+  "data_type": "text",
+  "field_metadata": {
+    "multiline": true,
+    "default_value": "Add a description.",
+    "version": 3
+  }
+}
+```
+
+**Important:** Do NOT put matching default values in your frontend component props. The CMS is the single source of truth. The only exception is file/image fields — use a placeholder image URL as a frontend default since `data_type: "file"` doesn't support `default_value`.
+
+### Enum / Dropdown Fields
+
+```json
+{
+  "uid": "status",
+  "data_type": "text",
+  "enum": {
+    "advanced": false,
+    "choices": [
+      { "value": "available" },
+      { "value": "pending" },
+      { "value": "adopted" }
+    ]
+  },
+  "display_type": "dropdown",
+  "field_metadata": { "default_value": "available", "version": 3 }
+}
+```
+
+### File / Asset Fields
+
+```json
+{
+  "uid": "hero_image",
+  "data_type": "file",
+  "multiple": false
+}
+```
+
+Returns an object from the API:
+```json
+{
+  "hero_image": {
+    "uid": "blt...",
+    "url": "https://images.contentstack.io/v3/assets/...",
+    "filename": "photo.jpg",
+    "content_type": "image/jpeg"
+  }
+}
+```
+
+**Gotcha:** The asset must be published separately before the entry can serve it via the Delivery API. Publishing the entry alone is not enough if the asset isn't published.
+
+### Group Field with isTitle
+
+For multiple groups (like a Photos group), set `isTitle: true` on one field so collapsed instances show a meaningful label:
+
+```json
+{
+  "uid": "alt",
+  "data_type": "text",
+  "field_metadata": { "isTitle": true, "version": 3 }
+}
+```
+
+### Content Type Options for Visual Builder
+
+The content type must have `is_page: true` and a `url` field for Visual Builder to work:
+
+```json
+{
+  "options": {
+    "is_page": true,
+    "singleton": true,
+    "title": "title",
+    "url_pattern": "/:slug",
+    "url_prefix": "/dogs/"
+  }
+}
+```
+
+---
+
+## Debugging Live Preview
+
+### Entry data shows in CMS but not on localhost
+
+1. **Asset not published** — File fields return `null` on the Delivery API if the asset itself isn't published. Publish the asset first, then re-publish the entry.
+2. **Stale cache** — The Delivery SDK may cache responses. Create a fresh stack instance per preview request.
+3. **Wrong environment** — Verify `CONTENTSTACK_ENVIRONMENT` matches your published environment name.
+
+### data-cslp tags not generating
+
+1. Verify `addEditableTags` is called with `true` as the third argument (enables nested tags).
+2. Check that the `$` property exists on the entry after calling `addEditableTags`.
+3. Ensure the content type UID passed to `addEditableTags` matches the actual content type.
+
+### Visual Builder can't add/reorder blocks
+
+1. Missing container tag — the wrapper div needs `{...entry.$.sections}`.
+2. Missing item tags — each block needs `{...entry.$[`sections__${index}`]}` from the **parent entry's** `$`.
+3. Content type must have `is_page: true` and a `url` field.
+
+### URL field shows literal pattern instead of resolved value
+
+If the content type has `url_pattern: "/:slug"`, Contentstack auto-generates `url` as the literal `/:slug` instead of `/actual-slug`. Always set the `url` field explicitly when creating entries via the CMA.
+
+### Filters send wrong case
+
+Contentstack queries are case-sensitive. Filter values from UI pills ("Small") must be lowercased to match stored values ("small"):
+
+```typescript
+query.where("size", QueryOperation.EQUALS, filters.size.toLowerCase());
+```
+
+---
+
+## Publishing Checklist
+
+When creating/updating content via the CMA:
+
+1. **Create/update the entry** — `POST/PUT /content_types/{uid}/entries/{entry_uid}`
+2. **Publish any new assets** — `POST /assets/{asset_uid}/publish` with environments and locales
+3. **Publish the entry** — `POST /content_types/{uid}/entries/{entry_uid}/publish` with environments and locales
+4. **Verify on Delivery API** — `GET` from `cdn.contentstack.io` to confirm data is live
+
+Assets and entries have independent publish states. An entry can be published but reference an unpublished asset, which returns `null` on the CDN.
