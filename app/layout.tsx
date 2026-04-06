@@ -7,6 +7,7 @@ import Footer from "@/components/layout/Footer";
 import ContentstackVisualBuilder from "@/components/ContentstackVisualBuilder";
 import DogTicker from "@/components/layout/DogTicker";
 import { PersonalizeProvider } from "@/components/PersonalizeContext";
+import PersonalizeBadge from "@/components/PersonalizeBadge";
 
 const GTM_ID = process.env.NEXT_PUBLIC_GTM_ID;
 
@@ -56,6 +57,7 @@ export default function RootLayout({
           <DogTicker />
           <main className="flex-1">{children}</main>
           <Footer />
+          <PersonalizeBadge />
         </PersonalizeProvider>
         {GTM_ID && (
           <Script
