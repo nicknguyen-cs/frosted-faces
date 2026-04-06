@@ -1,5 +1,6 @@
 import contentstack, { QueryOperation } from "@contentstack/delivery-sdk";
 import { getContentstackEndpoints } from "@timbenniks/contentstack-endpoints";
+import Personalize from "@contentstack/personalize-edge-sdk";
 
 const region = process.env.CONTENTSTACK_REGION || "us";
 const endpoints = getContentstackEndpoints(region, true);
@@ -136,6 +137,7 @@ export interface LivePreviewParams {
   live_preview?: string;
   entry_uid?: string;
   content_type_uid?: string;
+  personalize_variants?: string;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -179,11 +181,17 @@ export async function getHomePage(
     const s = previewParams?.live_preview ? createStack() : stack;
     applyLivePreview(s, previewParams || {}, "home_page");
 
-    const result = await s
-      .contentType("home_page")
-      .entry()
-      .query()
-      .find();
+    const variantParam = previewParams?.personalize_variants;
+
+    const entryQuery = s.contentType("home_page").entry().query();
+
+    if (variantParam) {
+      const variantAlias =
+        Personalize.variantParamToVariantAliases(variantParam).join(",");
+      entryQuery.addParams({ "x-cs-variant-uid": variantAlias });
+    }
+
+    const result = await entryQuery.find();
     const entries = result.entries ?? [];
     const entry = (entries[0] as unknown as HomePageEntry) ?? null;
     if (entry && previewParams?.live_preview) addEditTags(entry, "home_page");

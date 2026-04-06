@@ -12,6 +12,7 @@
   "dependencies": {
     "@contentstack/delivery-sdk": "^5.1.2",
     "@contentstack/live-preview-utils": "^4.3.0",
+    "@contentstack/personalize-edge-sdk": "^1.0.21",
     "@prisma/client": "^6.19.3",
     "@tailwindcss/typography": "^0.5.19",
     "@timbenniks/contentstack-endpoints": "^3.0.2",
@@ -25,12 +26,14 @@
     "seed": "npx tsx prisma/seed.ts"
   },
   "devDependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.2",
+    "google-auth-library": "^10.6.2",
     "playwright": "^1.59.1",
     "tailwindcss": "^4",
     "tsx": "^4.21.0",

@@ -15,6 +15,11 @@
       "source": "local",
       "sourceType": "local",
       "computedHash": ""
+    },
+    "contentstack-gtm-integration": {
+      "source": "local",
+      "sourceType": "local",
+      "computedHash": ""
     }
   }
 }

@@ -6,6 +6,7 @@ import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import ContentstackVisualBuilder from "@/components/ContentstackVisualBuilder";
 import DogTicker from "@/components/layout/DogTicker";
+import { PersonalizeProvider } from "@/components/PersonalizeContext";
 
 const GTM_ID = process.env.NEXT_PUBLIC_GTM_ID;
 
@@ -50,10 +51,12 @@ export default function RootLayout({
           </noscript>
         )}
         <ContentstackVisualBuilder />
-        <Navbar />
-        <DogTicker />
-        <main className="flex-1">{children}</main>
-        <Footer />
+        <PersonalizeProvider>
+          <Navbar />
+          <DogTicker />
+          <main className="flex-1">{children}</main>
+          <Footer />
+        </PersonalizeProvider>
         {GTM_ID && (
           <Script
             id="gtm"

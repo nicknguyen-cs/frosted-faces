@@ -36,6 +36,9 @@ yarn-error.log*
 # MCP config (contains API keys)
 .mcp.json
 
+# Google service account keys
+*.serviceaccount.json
+
 # SQLite database
 prisma/dev.db
 prisma/dev.db-journal
