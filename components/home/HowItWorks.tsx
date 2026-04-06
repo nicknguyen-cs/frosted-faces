@@ -44,7 +44,7 @@ export default function HowItWorks({ steps: stepsFromCms, editTags }: HowItWorks
               const Icon = iconMap[step.icon] || Search;
               return (
                 <div
-                  key={step.number}
+                  key={index}
                   className="relative flex flex-col items-center text-center"
                   {...(editTags && editTags[`steps__${index}`])}
                 >
