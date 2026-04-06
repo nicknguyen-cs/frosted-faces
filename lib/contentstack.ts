@@ -183,15 +183,15 @@ export async function getHomePage(
 
     const variantParam = previewParams?.personalize_variants;
 
-    const entryQuery = s.contentType("home_page").entry().query();
+    const entries_api = s.contentType("home_page").entry();
 
     if (variantParam) {
       const variantAlias =
         Personalize.variantParamToVariantAliases(variantParam).join(",");
-      entryQuery.addParams({ "x-cs-variant-uid": variantAlias });
+      entries_api.variants(variantAlias);
     }
 
-    const result = await entryQuery.find();
+    const result = await entries_api.query().find();
     const entries = result.entries ?? [];
     const entry = (entries[0] as unknown as HomePageEntry) ?? null;
     if (entry && previewParams?.live_preview) addEditTags(entry, "home_page");
