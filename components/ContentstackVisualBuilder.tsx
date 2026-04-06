@@ -7,6 +7,9 @@ import type { IStackSdk } from "@contentstack/live-preview-utils";
 
 export default function ContentstackVisualBuilder() {
   useEffect(() => {
+    const isVisualBuilder =
+      new URLSearchParams(window.location.search).has("live_preview");
+
     // Restore scroll position saved before SSR reload
     const savedY = sessionStorage.getItem("__vb_scrollY");
     if (savedY !== null) {
@@ -33,14 +36,14 @@ export default function ContentstackVisualBuilder() {
 
     ContentstackLivePreview.init({
       ssr: true,
-      enable: true,
+      enable: isVisualBuilder,
       mode: "builder",
       stackSdk: stack.config as unknown as IStackSdk,
       stackDetails: {
         apiKey: process.env.NEXT_PUBLIC_CONTENTSTACK_API_KEY!,
         environment: process.env.NEXT_PUBLIC_CONTENTSTACK_ENVIRONMENT!,
       },
-      editButton: { enable: true },
+      editButton: { enable: isVisualBuilder },
       cleanCslpOnProduction: true,
     });
     return () => window.removeEventListener("beforeunload", saveScroll);
