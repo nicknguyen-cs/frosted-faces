@@ -2,14 +2,20 @@ import { NextRequest, NextResponse } from "next/server";
 import Personalize from "@contentstack/personalize-edge-sdk";
 
 export const config = {
-  matcher: ["/((?!_next|favicon\\.ico|api).*)"],
+  matcher: ["/((?!_next|api|favicon\\.ico|.*\\.(?:ico|png|jpg|jpeg|svg|gif|webp|css|js|woff2?|ttf|eot)$).*)"],
 };
 
 export default async function middleware(request: NextRequest) {
-  const edgeApiUrl =
-    process.env.NEXT_PUBLIC_CONTENTSTACK_PERSONALIZE_EDGE_API_URL;
-  if (edgeApiUrl) {
-    Personalize.setEdgeApiUrl(edgeApiUrl);
+  const { pathname } = request.nextUrl;
+
+  // Skip static assets and non-page requests
+  if (
+    pathname.startsWith("/_next") ||
+    pathname.startsWith("/api") ||
+    pathname.includes("favicon") ||
+    pathname.includes(".")
+  ) {
+    return NextResponse.next();
   }
 
   const projectUid =
@@ -18,16 +24,27 @@ export default async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const personalizeSdk = await Personalize.init(projectUid, { request });
+  const edgeApiUrl =
+    process.env.NEXT_PUBLIC_CONTENTSTACK_PERSONALIZE_EDGE_API_URL;
+  if (edgeApiUrl) {
+    Personalize.setEdgeApiUrl(edgeApiUrl);
+  }
 
-  const variantParam = personalizeSdk.getVariantParam();
-  const url = request.nextUrl.clone();
-  url.searchParams.set(Personalize.VARIANT_QUERY_PARAM, variantParam);
+  try {
+    const personalizeSdk = await Personalize.init(projectUid, { request });
 
-  const response = NextResponse.rewrite(url);
+    const variantParam = personalizeSdk.getVariantParam();
+    const url = request.nextUrl.clone();
+    url.searchParams.set(Personalize.VARIANT_QUERY_PARAM, variantParam);
 
-  await personalizeSdk.addStateToResponse(response);
-  response.headers.set("cache-control", "no-store");
+    const response = NextResponse.rewrite(url);
 
-  return response;
+    await personalizeSdk.addStateToResponse(response);
+    response.headers.set("cache-control", "no-store");
+
+    return response;
+  } catch (e) {
+    console.error("[Personalize] middleware error:", e);
+    return NextResponse.next();
+  }
 }
