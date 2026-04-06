@@ -7,6 +7,19 @@ import type { IStackSdk } from "@contentstack/live-preview-utils";
 
 export default function ContentstackVisualBuilder() {
   useEffect(() => {
+    // Restore scroll position saved before SSR reload
+    const savedY = sessionStorage.getItem("__vb_scrollY");
+    if (savedY !== null) {
+      sessionStorage.removeItem("__vb_scrollY");
+      window.scrollTo(0, parseInt(savedY, 10));
+    }
+
+    // Save scroll position before reload so we can restore it
+    const saveScroll = () => {
+      sessionStorage.setItem("__vb_scrollY", String(window.scrollY));
+    };
+    window.addEventListener("beforeunload", saveScroll);
+
     const stack = contentstack.stack({
       apiKey: process.env.NEXT_PUBLIC_CONTENTSTACK_API_KEY!,
       deliveryToken: "unused-on-client",
@@ -30,6 +43,7 @@ export default function ContentstackVisualBuilder() {
       editButton: { enable: true },
       cleanCslpOnProduction: true,
     });
+    return () => window.removeEventListener("beforeunload", saveScroll);
   }, []);
 
   return null;
