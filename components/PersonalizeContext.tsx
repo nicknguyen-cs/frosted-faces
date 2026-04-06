@@ -8,13 +8,20 @@ const PersonalizeContext = createContext<Sdk | null>(null);
 
 let sdkInstance: Sdk | null = null;
 
-async function getPersonalizeInstance() {
-  if (!Personalize.getInitializationStatus()) {
-    sdkInstance = await Personalize.init(
-      process.env.NEXT_PUBLIC_CONTENTSTACK_PERSONALIZE_PROJECT_UID as string
-    );
+async function getPersonalizeInstance(): Promise<Sdk | null> {
+  const projectUid =
+    process.env.NEXT_PUBLIC_CONTENTSTACK_PERSONALIZE_PROJECT_UID;
+  if (!projectUid) return null;
+
+  try {
+    if (!Personalize.getInitializationStatus()) {
+      sdkInstance = await Personalize.init(projectUid);
+    }
+    return sdkInstance;
+  } catch (e) {
+    console.warn("[Personalize] Client SDK init failed:", e);
+    return null;
   }
-  return sdkInstance;
 }
 
 export function PersonalizeProvider({
