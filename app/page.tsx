@@ -7,6 +7,8 @@ import CategoryBrowser from "@/components/home/CategoryBrowser";
 import HowItWorks from "@/components/home/HowItWorks";
 import MissionCTA from "@/components/home/MissionCTA";
 
+export const dynamic = "force-dynamic";
+
 interface PageProps {
   searchParams: Promise<LivePreviewParams>;
 }
