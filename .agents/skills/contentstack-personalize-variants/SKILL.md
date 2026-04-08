@@ -415,6 +415,26 @@ Complete sequence for creating an A/B test with variant content:
 
 ---
 
+## Manual Steps (Cannot Be Automated)
+
+The following steps **require human intervention** in the Contentstack UI, hosting platform, or Personalize dashboard. Inform the user of these before starting:
+
+1. **Create a Personalize project** — In Contentstack Personalize, create a project and connect it to the stack. Note the project UID.
+
+2. **Create an experience with variants** — In Personalize, create an A/B Test or Segmented experience. Define variant groups (e.g., Group A, Group B) and link them to the target content type. The variant UIDs are available in the experience's `._cms.variants` response.
+
+3. **Create conversion events** — In Personalize → Events, define the events you want to track (e.g., "Conversion"). Note the event key.
+
+4. **Add env vars to hosting platform** — Add `NEXT_PUBLIC_CONTENTSTACK_PERSONALIZE_PROJECT_UID` to Contentstack Launch (or your hosting platform). This is a `NEXT_PUBLIC_` var — it requires a **full rebuild**, not just a redeploy.
+
+5. **Verify variant content in Contentstack UI** — After creating variants via API, check the entry in Contentstack UI to confirm variant data appears correctly under the Personalize tab. If `_change_set` or `_order` was malformed, the variant will appear empty.
+
+6. **Publish variants** — Variants must be published separately from the base entry. While the bulk publish API can automate this, verify publish status in the UI if content isn't being delivered. Check `publish_details` in the variant CMA response — if `null`, it's not published.
+
+7. **Activate the experience** — The experience must be set to **Active** in Personalize for variant delivery to work. Draft experiences won't trigger the Edge SDK.
+
+---
+
 ## Troubleshooting
 
 ### Variant Content Not Delivered

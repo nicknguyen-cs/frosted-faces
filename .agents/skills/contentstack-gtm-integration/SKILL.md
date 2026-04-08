@@ -82,14 +82,16 @@ After the discovery step, the Personalize template parameters typically follow t
 
 | Parameter Key | Used By | Description |
 |---|---|---|
-| `action` | All tags | Action type: `init`, `triggerImpressions`, `triggerEvent`, `setAttributes`, `setUserId` |
+| `actionType` | All tags | Action type: `initialize`, `triggerImpressions`, `triggerEvent`, `setAttributes`, `setUserId`, `reset` |
 | `projectUid` | Initialize | Contentstack Personalize project UID |
-| `sdkUrl` | Initialize | Personalize Edge SDK URL (usually leave default) |
+| `personalizeSdkUrl` | Initialize | Personalize Edge SDK URL (default: jsdelivr CDN) |
 | `edgeApiUrl` | Initialize | Edge API URL (default: AWS NA) |
-| `experienceShortUids` | Trigger Impressions | List of experience short UIDs |
+| `experiences` | Trigger Impressions | List of maps, each with key `shortUID` (capital ID) |
 | `eventKey` | Trigger Event | The event key from Personalize |
-| `attributes` | Set Attributes | Key-value pairs matching Personalize attribute keys |
+| `userAttributes` | Set Attributes | List of maps with `attributeKey` and `attributeValue` |
 | `preserveUserAttributes` | Set UserId | Boolean to preserve attributes on identity change |
+
+**Important:** The parameter key is `actionType` (not `action`), and the impression list key is `experiences` with nested `shortUID` (not `experienceShortUids` or `shortUid`). These names come from the community template definition and are not publicly documented — they were discovered by reading the template source.
 
 ---
 
@@ -110,8 +112,9 @@ This tag sets up the Personalize Edge SDK. It must fire before all other Persona
   "name": "CS Personalize - Initialize",
   "type": "cvt_{TEMPLATE_ID}",
   "parameter": [
-    { "type": "template", "key": "action", "value": "init" },
+    { "type": "template", "key": "actionType", "value": "initialize" },
     { "type": "template", "key": "projectUid", "value": "{PERSONALIZE_PROJECT_UID}" },
+    { "type": "template", "key": "personalizeSdkUrl", "value": "https://cdn.jsdelivr.net/npm/@contentstack/personalize-edge-sdk/dist/personalize-edge-sdk.min.js" },
     { "type": "template", "key": "edgeApiUrl", "value": "https://personalize-edge.contentstack.com" }
   ],
   "firingTriggerId": ["{ALL_PAGES_TRIGGER_ID}"],
@@ -128,15 +131,15 @@ Tracks when a personalized experience is displayed. Must fire after Initialize.
   "name": "CS Personalize - {Experience Name} Impression",
   "type": "cvt_{TEMPLATE_ID}",
   "parameter": [
-    { "type": "template", "key": "action", "value": "triggerImpressions" },
+    { "type": "template", "key": "actionType", "value": "triggerImpressions" },
     {
       "type": "list",
-      "key": "experienceShortUids",
+      "key": "experiences",
       "list": [
         {
           "type": "map",
           "map": [
-            { "type": "template", "key": "shortUid", "value": "{EXPERIENCE_SHORT_UID}" }
+            { "type": "template", "key": "shortUID", "value": "{EXPERIENCE_SHORT_UID}" }
           ]
         }
       ]
@@ -162,7 +165,7 @@ Records user interactions (clicks, conversions) for Personalize.
   "name": "CS Personalize - {Event Name} Event",
   "type": "cvt_{TEMPLATE_ID}",
   "parameter": [
-    { "type": "template", "key": "action", "value": "triggerEvent" },
+    { "type": "template", "key": "actionType", "value": "triggerEvent" },
     { "type": "template", "key": "eventKey", "value": "{EVENT_KEY}" }
   ],
   "firingTriggerId": ["{CLICK_TRIGGER_ID}"],
@@ -185,16 +188,16 @@ Sends user attributes to Personalize for targeted content.
   "name": "CS Personalize - Set {Attribute Name}",
   "type": "cvt_{TEMPLATE_ID}",
   "parameter": [
-    { "type": "template", "key": "action", "value": "setAttributes" },
+    { "type": "template", "key": "actionType", "value": "setAttributes" },
     {
       "type": "list",
-      "key": "attributes",
+      "key": "userAttributes",
       "list": [
         {
           "type": "map",
           "map": [
-            { "type": "template", "key": "key", "value": "{ATTRIBUTE_KEY}" },
-            { "type": "template", "key": "value", "value": "{ATTRIBUTE_VALUE}" }
+            { "type": "template", "key": "attributeKey", "value": "{ATTRIBUTE_KEY}" },
+            { "type": "template", "key": "attributeValue", "value": "{ATTRIBUTE_VALUE}" }
           ]
         }
       ]
@@ -220,7 +223,7 @@ Associates a unique identifier when an unknown user logs in.
   "name": "CS Personalize - Set UserId",
   "type": "cvt_{TEMPLATE_ID}",
   "parameter": [
-    { "type": "template", "key": "action", "value": "setUserId" },
+    { "type": "template", "key": "actionType", "value": "setUserId" },
     { "type": "boolean", "key": "preserveUserAttributes", "value": "true" }
   ],
   "firingTriggerId": ["{LOGIN_TRIGGER_ID}"],
@@ -332,6 +335,19 @@ Tags reference other tags **by name** (not ID) in `setupTag` and `teardownTag` a
 
 ---
 
+## Built-In Variables
+
+GTM built-in variables must be **enabled** before triggers can reference them. By default, only a few are active (Page URL, Page Hostname, Page Path, Referrer, Event).
+
+**Click triggers require enabling Click variables first:**
+- Go to **Variables** → **Configure** (under Built-In Variables) → check **Click URL**, **Click Element**, **Click ID**, etc.
+
+If a trigger references an un-enabled built-in variable, GTM will show a workspace validation error: `Unknown variable "{Name}" found in a trigger`.
+
+This cannot be done via the API — it must be enabled in the GTM UI before publishing.
+
+---
+
 ## Publishing
 
 ### Step 1: Create a Version
@@ -352,6 +368,12 @@ POST https://tagmanager.googleapis.com/tagmanager/v2/accounts/{a}/containers/{c}
 ```
 POST https://tagmanager.googleapis.com/tagmanager/v2/accounts/{a}/containers/{c}/versions/{versionId}:publish
 ```
+
+### Community Template Publishing Limitation
+
+When a workspace contains community template tags (like Contentstack Personalize Actions), the `create_version` response may include `"compilerError": true`. This prevents the version from being published via API (returns 404).
+
+**Workaround:** Publish manually from the GTM UI — click **Submit** in the workspace, name the version, and publish. The tags and triggers created via API will be included.
 
 ---
 
@@ -374,6 +396,22 @@ The recommended sequence for setting up a new Personalize integration:
 12. POST create_version
 13. POST publish
 ```
+
+---
+
+## Manual Steps (Cannot Be Automated)
+
+The following steps **require human intervention** in the GTM UI or Google Cloud console. Inform the user of these before starting:
+
+1. **Google Cloud setup** — Enable the Tag Manager API v2 and create a service account with the required OAuth scopes. Generate a key file and store it as `GTM_SERVICE_ACCOUNT_KEY` env var.
+
+2. **Install the community template (first time only)** — In the GTM UI, create one tag using the "Contentstack Personalize Actions" community template from the gallery and save it. This installs the template into the container. The tag can be deleted afterward — the template stays. The `cvt_{id}` type string (e.g., `cvt_WKGBT`) is discovered by reading tags back via API.
+
+3. **Enable built-in Click variables** — Before creating click-based triggers, go to GTM UI → **Variables** → **Configure** → enable **Click URL**, **Click ID**, **Click Element**, etc. This cannot be done via API.
+
+4. **Publish the container version** — Community template tags cause `compilerError: true` on API version creation, which blocks API publishing. The user must go to GTM UI → **Submit** → name the version → **Publish**.
+
+5. **Add `NEXT_PUBLIC_GTM_ID` env var** — Set this in `.env.local` (and in Contentstack Launch / hosting platform). Requires a rebuild since it's a `NEXT_PUBLIC_` var.
 
 ---
 
@@ -400,6 +438,15 @@ The GTM snippet should already be installed in `app/layout.tsx` using `next/scri
 ### Community Template Not Found
 - The `cvt_{id}` type must be discovered by creating one tag manually in GTM UI first
 - Read it back via `GET .../tags` to capture the type string and parameter keys
+- Alternatively, the template type ID can be found in the `galleryTemplateId` field of the template data (e.g., `cvt_WKGBT`)
+
+### Cannot Publish via API (404)
+- Community template tags cause `compilerError: true` on `create_version`
+- This blocks API publishing — use the GTM UI **Submit** button instead
+
+### Unknown Variable in Trigger
+- Built-in variables (Click URL, Click ID, etc.) must be manually enabled in GTM UI → Variables → Configure
+- Cannot be enabled via the API
 
 ### Data Not Reaching Personalize
 - Verify the Personalize project UID is correct

@@ -94,7 +94,7 @@ export default function PersonalizeBadge() {
             )}
           </div>
 
-          <div className="mt-3 pt-3 border-t border-sand-200 flex gap-1.5">
+          <div className="mt-3 pt-3 border-t border-sand-200 flex items-center gap-1.5">
             {Object.entries(variantMeta).map(([key, v]) => (
               <span
                 key={key}
@@ -114,6 +114,16 @@ export default function PersonalizeBadge() {
             >
               Base
             </span>
+            <button
+              onClick={() => {
+                document.cookie = "cs-personalize-user-uid=; max-age=0; path=/";
+                document.cookie = "cs-personalize-manifest=; max-age=0; path=/";
+                window.location.reload();
+              }}
+              className="ml-auto text-[10px] px-2 py-0.5 rounded-full font-medium bg-charcoal text-white hover:bg-stone transition-colors"
+            >
+              Reset
+            </button>
           </div>
         </div>
       )}
