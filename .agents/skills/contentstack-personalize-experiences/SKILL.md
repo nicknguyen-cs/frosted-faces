@@ -78,11 +78,21 @@ The Contentstack MCP (`@contentstack/mcp`) exposes `create_experience`, `get_all
 
 Use the REST APIs directly (via curl) for these operations.
 
-### CDP audience UID incompatibility
+### Lytics audiences use a different field
 
-Audiences synced from external CDPs (e.g., Lytics) have **32-character hex UIDs** that are not valid MongoDB ObjectIds. The experience version API rejects them with: `"<uid> is not a valid ObjectId"`.
+Lytics-synced audiences have 32-char hex UIDs that the `audiences` field rejects (`"not a valid ObjectId"`). Use `lyticsAudiences` instead:
 
-**Workaround:** Create native Personalize audiences that mirror the CDP segments using custom attributes. Native audiences receive 24-character ObjectId UIDs that the API accepts.
+```json
+{
+  "__type": "SegmentedVariant",
+  "name": "My Variant",
+  "audiences": [],
+  "lyticsAudiences": ["<32-char-lytics-uid>"],
+  "audienceCombinationType": "OR"
+}
+```
+
+The experience response also separates them: `referredLyticsAudiences` vs `referredAudiences`.
 
 ---
 
@@ -153,14 +163,15 @@ authtoken: <authtoken>
     {
       "__type": "SegmentedVariant",
       "name": "<Variant Name>",
-      "audiences": ["<audience_object_id>"],
+      "audiences": ["<native_audience_object_id>"],
+      "lyticsAudiences": ["<lytics_audience_uid>"],
       "audienceCombinationType": "OR"
     }
   ]
 }
 ```
 
-For A/B tests, use `ABTestVariant` with `trafficDistribution` (percentage) instead of `audiences`.
+Use `audiences` for native Personalize audiences (24-char ObjectId UIDs) and `lyticsAudiences` for Lytics-synced audiences (32-char hex UIDs). Pass an empty array for the unused field. For A/B tests, use `ABTestVariant` with `trafficDistribution` (percentage) instead of audiences.
 
 ### Link Variant Group to Content Type
 
@@ -194,6 +205,9 @@ Each experience has one version at a time. Setting `status: ACTIVE` archives any
 ### Variant group sync is automatic but linkage is not
 When you configure an experience version with variants, Personalize auto-creates a variant group in the CMS. But it does **not** auto-link it to any content type. You must explicitly link it via `PUT /v3/variant_groups/{uid}`.
 
+### Deleting an experience leaves orphaned variant groups
+Deleting a Personalize experience does **not** delete its CMS variant group. The orphaned group stays linked to the content type with `personalize_metadata.status: "unlinked"`. If you recreate the experience, a new variant group is created (with `(1)` suffix). Unlink orphaned groups manually via `PUT /v3/variant_groups/{uid}` with `status: "unlinked"` before linking the new one.
+
 ### The `status` field is required on version updates
 Omitting `status` from `PUT /experiences/{uid}/versions/{versionUid}` returns `INVALID_STATUS` and `STATUS_REQUIRED` errors.
 
@@ -204,10 +218,10 @@ Every `SegmentedVariant` must include both `audiences` (non-empty array) and `au
 
 ## Failures & Fixes
 
-### CDP audience UID rejected as invalid ObjectId
-- **Tried:** `"audiences": ["c1adaa52abab8914a51ddf93aa7681f7"]` (Lytics 32-char hex UID)
+### Lytics audience UID rejected as invalid ObjectId
+- **Tried:** `"audiences": ["c1adaa52abab8914a51ddf93aa7681f7"]` (Lytics 32-char hex UID in the `audiences` field)
 - **Error:** `"c1adaa52... is not a valid ObjectId"`
-- **Fix:** Create native Personalize audiences via `POST /audiences` with rule definitions. Native audiences get valid 24-char ObjectId UIDs.
+- **Fix:** Use `"lyticsAudiences"` field instead of `"audiences"` for Lytics-synced audiences. Set `"audiences": []`. The `audiences` field only accepts 24-char native Personalize ObjectId UIDs.
 
 ### Management token rejected by Personalize API
 - **Tried:** `authtoken: <management_token>` on Personalize endpoints
