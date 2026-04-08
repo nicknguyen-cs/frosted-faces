@@ -1,5 +1,6 @@
 import Container from "@/components/layout/Container";
 import Button from "@/components/ui/Button";
+import TrackClick from "@/components/tracking/TrackClick";
 import type { EditableTags } from "@/lib/contentstack";
 
 interface MissionCTAProps {
@@ -35,15 +36,17 @@ export default function MissionCTA({
           </p>
           {ctaText && ctaLink && (
             <div className="mt-8">
-              <Button
-                variant="secondary"
-                size="lg"
-                asChild
-                href={ctaLink}
-                className="border-white text-white hover:bg-white/10"
-              >
-                {ctaText} &rarr;
-              </Button>
+              <TrackClick event="cta_clicked" data={{ cta_text: ctaText, cta_link: ctaLink, location: "mission" }}>
+                <Button
+                  variant="secondary"
+                  size="lg"
+                  asChild
+                  href={ctaLink}
+                  className="border-white text-white hover:bg-white/10"
+                >
+                  {ctaText} &rarr;
+                </Button>
+              </TrackClick>
             </div>
           )}
         </div>

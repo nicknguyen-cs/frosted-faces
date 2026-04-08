@@ -207,7 +207,7 @@ curl -s -X POST "https://api.contentstack.io/v3/bulk/publish" \
         "uid": "{ENTRY_UID}",
         "content_type": "{CONTENT_TYPE}",
         "locale": "en-us",
-        "version": {VARIANT_VERSION},
+        "version": {BASE_ENTRY_VERSION},
         "variant_uid": "{VARIANT_UID}"
       }
     ],
@@ -215,6 +215,8 @@ curl -s -X POST "https://api.contentstack.io/v3/bulk/publish" \
     "locales": ["en-us"]
   }'
 ```
+
+**WARNING:** The `version` field refers to the **base entry version**, NOT the variant version. Using the wrong value (e.g., `1` instead of the current base entry version) will overwrite the live base entry and can blank the page. Always check `_version` from `GET /v3/content_types/{ct}/entries/{entry}` first, or omit `version` to publish the latest.
 
 ### Via MCP Tool
 

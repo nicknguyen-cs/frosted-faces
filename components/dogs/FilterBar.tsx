@@ -2,6 +2,7 @@
 
 import { useSearchParams, useRouter } from "next/navigation";
 import FilterPill from "./FilterPill";
+import { lyticsSend } from "@/lib/lytics";
 
 const FILTER_GROUPS = [
   {
@@ -47,6 +48,7 @@ export default function FilterBar({ availableValues }: FilterBarProps) {
       params.delete(key);
     } else {
       params.set(key, value);
+      lyticsSend({ event: "filter_applied", filter_type: key, filter_value: value.toLowerCase() });
     }
     router.push(`/dogs?${params.toString()}`);
   }

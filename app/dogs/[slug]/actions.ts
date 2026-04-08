@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 type InquiryResult = {
   success: boolean;
   error?: string;
+  email?: string;
 };
 
 export async function submitInquiry(
@@ -31,7 +32,7 @@ export async function submitInquiry(
       },
     });
 
-    return { success: true };
+    return { success: true, email: email.trim() };
   } catch {
     return {
       success: false,

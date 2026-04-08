@@ -1,24 +1,41 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
 import { submitInquiry } from "@/app/dogs/[slug]/actions";
+import { lyticsSend } from "@/lib/lytics";
 
 type InquiryFormProps = {
   dogId: string;
   dogName: string;
+  dogBreed: string;
+  dogSize: string;
+  dogAgeCategory: string;
 };
 
 const inputClasses =
   "w-full rounded-xl border border-sand-200 bg-white px-4 py-2.5 text-sm text-charcoal placeholder:text-pebble focus:border-terracotta focus:outline-none focus:ring-1 focus:ring-terracotta";
 
-export default function InquiryForm({ dogId, dogName }: InquiryFormProps) {
+export default function InquiryForm({ dogId, dogName, dogBreed, dogSize, dogAgeCategory }: InquiryFormProps) {
   const boundAction = submitInquiry.bind(null, dogId);
   const [state, formAction, isPending] = useActionState(
-    async (_prev: { success: boolean; error?: string } | null, formData: FormData) => {
+    async (_prev: { success: boolean; error?: string; email?: string } | null, formData: FormData) => {
       return boundAction(formData);
     },
     null
   );
+
+  useEffect(() => {
+    if (state?.success && state.email) {
+      lyticsSend({
+        event: "inquiry_submitted",
+        email: state.email,
+        dog_name: dogName,
+        breed: dogBreed,
+        size: dogSize,
+        age_category: dogAgeCategory,
+      });
+    }
+  }, [state, dogName, dogBreed, dogSize, dogAgeCategory]);
 
   if (state?.success) {
     return (

@@ -11,6 +11,7 @@ import BioSection from "@/components/dog-profile/BioSection";
 import CompatibilityChart from "@/components/dog-profile/CompatibilityChart";
 import MedicalBadges from "@/components/dog-profile/MedicalBadges";
 import InquiryForm from "@/components/dog-profile/InquiryForm";
+import TrackPageView from "@/components/tracking/TrackPageView";
 
 
 
@@ -54,6 +55,17 @@ export default async function DogProfilePage({ params, searchParams }: PageProps
     <>
 
       <main className="mx-auto w-full max-w-4xl px-5 py-8 space-y-10">
+        <TrackPageView
+          event="dog_viewed"
+          data={{
+            breed: dog.breed,
+            size: dog.size,
+            age_category: dog.age_category,
+            energy_level: dog.energy_level,
+            sex: dog.sex,
+            slug,
+          }}
+        />
         <ProfileHero photo={heroPhoto} status={dog.status} editTags={dog.$} />
 
         <div>
@@ -112,7 +124,13 @@ export default async function DogProfilePage({ params, searchParams }: PageProps
           editTags={dog.$}
         />
 
-        <InquiryForm dogId={dog.uid} dogName={dog.title} />
+        <InquiryForm
+          dogId={dog.uid}
+          dogName={dog.title}
+          dogBreed={dog.breed}
+          dogSize={dog.size}
+          dogAgeCategory={dog.age_category}
+        />
       </main>
     </>
   );

@@ -1,5 +1,6 @@
 import Button from "@/components/ui/Button";
 import Container from "@/components/layout/Container";
+import TrackClick from "@/components/tracking/TrackClick";
 import type { EditableTags } from "@/lib/contentstack";
 
 interface HeroProps {
@@ -39,9 +40,11 @@ export default function Hero({
             </p>
             {ctaText && ctaLink && (
               <div>
-                <Button variant="primary" size="lg" asChild href={ctaLink}>
-                  {ctaText} &rarr;
-                </Button>
+                <TrackClick event="cta_clicked" data={{ cta_text: ctaText, cta_link: ctaLink, location: "hero" }}>
+                  <Button variant="primary" size="lg" asChild href={ctaLink}>
+                    {ctaText} &rarr;
+                  </Button>
+                </TrackClick>
               </div>
             )}
             <div className="flex gap-6 pt-2 text-sm text-pebble font-body">
