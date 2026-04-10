@@ -243,7 +243,6 @@ export async function getHomePage(
     const result = await entries_api.query().find();
     const entries = result.entries ?? [];
     const entry = (entries[0] as unknown as HomePageEntry) ?? null;
-    console.log("[HomePage] entry response:", JSON.stringify(entry, null, 2));
     if (entry && previewParams?.live_preview) addEditTags(entry, "home_page");
     return entry;
   } catch (error) {
