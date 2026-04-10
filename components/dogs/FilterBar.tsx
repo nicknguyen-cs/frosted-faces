@@ -65,11 +65,14 @@ export default function FilterBar({ availableValues }: FilterBarProps) {
       params.set(key, value);
       window.dataLayer?.push({ event: "filter_applied", filter_type: key, filter_value: value.toLowerCase() });
     }
-    router.push(`/dogs?${params.toString()}`);
+    const url = `/dogs?${params.toString()}`;
+    router.push(url);
+    router.refresh();
   }
 
   function clearAll() {
     router.push("/dogs");
+    router.refresh();
   }
 
   return (
