@@ -333,7 +333,7 @@ Same structure but `"multiple": true`. Creates an array of group instances — u
       "display_name": "Title",
       "uid": "title",
       "data_type": "text",
-      "field_metadata": { "isTitle": true },
+      "field_metadata": { "version": 3, "isTitle": true },
       "multiple": false,
       "mandatory": false,
       "unique": false,
@@ -343,7 +343,7 @@ Same structure but `"multiple": true`. Creates an array of group instances — u
       "display_name": "Description",
       "uid": "description",
       "data_type": "text",
-      "field_metadata": { "multiline": true },
+      "field_metadata": { "version": 3, "multiline": true },
       "multiple": false,
       "mandatory": false,
       "unique": false,
@@ -357,7 +357,7 @@ Same structure but `"multiple": true`. Creates an array of group instances — u
 }
 ```
 
-**Tip:** Set `"isTitle": true` on one sub-field so the group instance has a human-readable label in the UI.
+**Required:** Always set `"isTitle": true` on exactly one sub-field (typically the most human-readable one — e.g., `title`, `label`, `question`, `name`). Without this, every instance displays as "Instance 1", "Instance 2" in the CMS entry editor, making content unmanageable. This must be done at content type creation time, not as an afterthought.
 
 ### 16. Modular Blocks
 
@@ -436,6 +436,8 @@ A field that holds an ordered list of typed blocks — the backbone of page-buil
 ```
 
 Each block is like a mini content type with its own schema. Blocks do **not** get `field_metadata` at the block level — only their child fields do.
+
+**Critical:** `"multiple": true` is **required** on the Modular Blocks field itself. Omitting it causes the cryptic API error: `"Modular Blocks must be multiple"`. Always include it in the field definition.
 
 ### 17. Global Field
 
@@ -1080,6 +1082,7 @@ To reference a Global Field as a block inside a Modular Blocks field, use `refer
 | Renaming a block UID without migrating entry data | Data under old block UID silently dropped | Read entry, re-key data under new block UID, update |
 | Setting file fields with URLs instead of asset UIDs | API rejects or field is empty | Pass the asset UID string; upload the asset first if needed |
 | Including both `schema` and `reference_to` on a block | API error: cannot combine both parameters | Use `reference_to` alone for Global Field blocks, `schema` alone for inline blocks |
+| Missing `multiple: true` on Modular Blocks field | API error: "Modular Blocks must be multiple" | Always set `"multiple": true` on the blocks field itself |
 | Missing `description` on fields | Editors have no guidance, make formatting mistakes | Add `field_metadata.description` to every field with clear help text |
 
 ---

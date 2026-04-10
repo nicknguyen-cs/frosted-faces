@@ -16,6 +16,7 @@
     "@prisma/client": "^6.19.3",
     "@tailwindcss/typography": "^0.5.19",
     "@timbenniks/contentstack-endpoints": "^3.0.2",
+    "lottie-react": "^2.4.1",
     "lucide-react": "^1.7.0",
     "next": "16.2.2",
     "prisma": "^6.19.3",

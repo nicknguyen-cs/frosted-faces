@@ -182,6 +182,45 @@ export interface AboutPageEntry {
   $?: EditableTags;
 }
 
+// ─── Foster Page types ─────────────────────────────────────────────────────
+
+export interface IntroCardsBlock {
+  cards?: { icon: string; title: string; description: string; $?: EditableTags }[];
+  $?: EditableTags;
+}
+
+export interface FosterJourneyBlock {
+  heading?: string;
+  steps?: { day_label: string; title: string; description: string; $?: EditableTags }[];
+  $?: EditableTags;
+}
+
+export interface ImpactStatsBlock {
+  stats?: { value: number; suffix: string; label: string; $?: EditableTags }[];
+  $?: EditableTags;
+}
+
+export interface FAQBlock {
+  heading?: string;
+  items?: { question: string; answer: string; $?: EditableTags }[];
+  $?: EditableTags;
+}
+
+export type FosterPageSection =
+  | { hero: HeroBlock }
+  | { intro_cards: IntroCardsBlock }
+  | { foster_journey: FosterJourneyBlock }
+  | { impact_stats: ImpactStatsBlock }
+  | { faq: FAQBlock }
+  | { cta_banner: CTABannerBlock };
+
+export interface FosterPageEntry {
+  uid: string;
+  title: string;
+  sections: FosterPageSection[];
+  $?: EditableTags;
+}
+
 export interface LivePreviewParams {
   live_preview?: string;
   entry_uid?: string;
@@ -348,6 +387,24 @@ export async function getFeaturedDogs(
   } catch (error) {
     console.error("Error fetching featured dogs:", error);
     return [];
+  }
+}
+
+export async function getFosterPage(
+  previewParams?: LivePreviewParams
+): Promise<FosterPageEntry | null> {
+  try {
+    const s = previewParams?.live_preview ? createStack() : stack;
+    applyLivePreview(s, previewParams || {}, "foster_page");
+
+    const result = await s.contentType("foster_page").entry().query().find();
+    const entries = result.entries ?? [];
+    const entry = (entries[0] as unknown as FosterPageEntry) ?? null;
+    if (entry && previewParams?.live_preview) addEditTags(entry, "foster_page");
+    return entry;
+  } catch (error) {
+    console.error("Error fetching foster page:", error);
+    return null;
   }
 }
 
