@@ -1,7 +1,5 @@
 "use client";
 
-import { useSearchParams, useRouter } from "next/navigation";
-import { useEffect } from "react";
 import FilterPill from "./FilterPill";
 
 const FILTER_GROUPS = [
@@ -28,52 +26,17 @@ type FilterBarProps = {
     ageCategory: Set<string>;
     energyLevel: Set<string>;
   };
+  activeFilters: {
+    size: string;
+    ageCategory: string;
+    energyLevel: string;
+  };
+  onFilter: (key: string, value: string) => void;
+  onClear: () => void;
 };
 
-export default function FilterBar({ availableValues }: FilterBarProps) {
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  // Re-fetch server data when the URL search params don't match what this
-  // component last rendered with (handles back button, "Back to all dogs" link,
-  // and any other navigation that serves a stale cached page)
-  useEffect(() => {
-    function syncParams() {
-      const urlParams = new URLSearchParams(window.location.search).toString();
-      const rendered = searchParams.toString();
-      if (urlParams !== rendered) {
-        router.refresh();
-      }
-    }
-    syncParams();
-    window.addEventListener("popstate", syncParams);
-    return () => window.removeEventListener("popstate", syncParams);
-  }, [searchParams, router]);
-
-  const activeFilters = {
-    size: searchParams.get("size") ?? "",
-    ageCategory: searchParams.get("ageCategory") ?? "",
-    energyLevel: searchParams.get("energyLevel") ?? "",
-  };
-
+export default function FilterBar({ availableValues, activeFilters, onFilter, onClear }: FilterBarProps) {
   const activeCount = Object.values(activeFilters).filter(Boolean).length;
-
-  function handleToggle(key: string, value: string) {
-    const params = new URLSearchParams(searchParams.toString());
-    if (value === "All" || params.get(key) === value) {
-      params.delete(key);
-    } else {
-      params.set(key, value);
-      window.dataLayer?.push({ event: "filter_applied", filter_type: key, filter_value: value.toLowerCase() });
-    }
-    const url = `/dogs?${params.toString()}`;
-    router.push(url);
-    router.refresh();
-  }
-
-  function clearAll() {
-    router.push("/dogs");
-    router.refresh();
-  }
 
   return (
     <div className="space-y-4">
@@ -98,7 +61,7 @@ export default function FilterBar({ availableValues }: FilterBarProps) {
                 label={option}
                 active={isActive}
                 disabled={isDisabled}
-                onClick={() => handleToggle(group.key, option)}
+                onClick={() => onFilter(group.key, option)}
               />
             );
           })}
@@ -111,7 +74,7 @@ export default function FilterBar({ availableValues }: FilterBarProps) {
             {activeCount} filter{activeCount !== 1 && "s"} active
           </span>
           <button
-            onClick={clearAll}
+            onClick={onClear}
             className="text-sm text-terracotta hover:text-terracotta-dark underline cursor-pointer transition"
           >
             Clear all
