@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { Suspense } from "react";
 import { getDogs } from "@/lib/contentstack";
 import DogCard from "@/components/dogs/DogCard";
