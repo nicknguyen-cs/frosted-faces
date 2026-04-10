@@ -234,7 +234,7 @@ Every `SegmentedVariant` must include both `audiences` (non-empty array) and `au
 - **Fix:** Link the variant group first: `PUT /v3/variant_groups/{uid}` with `content_types: [{"uid": "<ct>", "status": "linked"}]`
 
 ### Variant group linkage fails with misleading error
-- **Tried:** `PUT /v3/variant_groups/{uid}` with `{"content_types": [{"uid": "home_page"}]}`
+- **Tried:** `PUT /v3/variant_groups/{uid}` with `{"content_types": [{"uid": "<content_type>"}]}`
 - **Error:** `"Name or content types is required"`
 - **Fix:** Include both `name` and `content_types` with the `status` field: `{"name": "...", "content_types": [{"uid": "...", "status": "linked"}]}`
 

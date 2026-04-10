@@ -27,7 +27,7 @@ This skill automates the integration of Contentstack Personalize with Google Tag
   - `https://www.googleapis.com/auth/tagmanager.edit.containers`
   - `https://www.googleapis.com/auth/tagmanager.publish`
   - `https://www.googleapis.com/auth/tagmanager.readonly`
-- GTM container ID (e.g., `GTM-NQZZQM33`)
+- GTM container ID (e.g., `GTM-XXXXXXX`)
 - Contentstack Personalize project UID
 - Access token stored in env var `GTM_ACCESS_TOKEN`
 

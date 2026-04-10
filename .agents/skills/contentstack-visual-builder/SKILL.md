@@ -248,19 +248,19 @@ export default async function Page() {
 
 ## Group Fields (Multiple)
 
-### CSLP Tagging for Add/Reorder
+### Three-Level CSLP Tagging (Same as Modular Blocks)
 
-Group fields with `multiple: true` follow the same container + item pattern:
+Group fields with `multiple: true` require the **same three-level tagging** as modular blocks. Without all three levels, Visual Builder cannot add, delete, or reorder group instances — it can only edit existing field values inline.
 
 ```tsx
-{/* Container gets the field tag — enables "add" affordance */}
+{/* Level 1: Container — enables the "+" add button */}
 <div {...(editTags && editTags.categories)}>
 
   {categories.map((cat, index) => (
-    {/* Each item gets field__index — enables reorder/delete */}
+    {/* Level 2: Item wrapper — enables reorder/delete per instance */}
     <div key={index} {...(editTags && editTags[`categories__${index}`])}>
 
-      {/* Inner fields use item's own $ */}
+      {/* Level 3: Inner fields — enables inline editing */}
       <h3 {...(cat.$ && cat.$.title)}>{cat.title}</h3>
       <p {...(cat.$ && cat.$.description)}>{cat.description}</p>
 
@@ -268,6 +268,28 @@ Group fields with `multiple: true` follow the same container + item pattern:
   ))}
 </div>
 ```
+
+**Common mistake:** Tagging only the inner fields (Level 3) and skipping Levels 1 and 2. This lets editors change existing text but prevents adding new instances or reordering — the "+" button never appears.
+
+### Item Wrapper Must Have Clickable Area
+
+The Level 2 item wrapper element **must have enough padding or visual space** for Visual Builder to detect hover/click on it. If the wrapper has zero padding and child elements fill it entirely, Visual Builder cannot distinguish the item wrapper from its children — making it impossible to select the item for delete or reorder.
+
+```tsx
+{/* BAD: No padding — child elements fill the wrapper, Visual Builder can't target it */}
+<div key={i} {...(editTags && editTags[`stats__${i}`])}>
+  <p>{stat.value}</p>
+  <p>{stat.label}</p>
+</div>
+
+{/* GOOD: Padding gives Visual Builder a clickable boundary around the children */}
+<div key={i} className="p-4 rounded-xl" {...(editTags && editTags[`stats__${i}`])}>
+  <p>{stat.value}</p>
+  <p>{stat.label}</p>
+</div>
+```
+
+This is especially important for compact items like stats, tags, or icon grids where the content is small and tightly packed.
 
 ### Empty State Placeholder
 
@@ -281,7 +303,7 @@ When a group array is empty, the container div has zero height and Visual Builde
     </div>
   )}
   {items.map((item, index) => (
-    <div key={index} {...(editTags && editTags[`items__${index}`])}>
+    <div key={index} className="p-4" {...(editTags && editTags[`items__${index}`])}>
       ...
     </div>
   ))}
@@ -294,7 +316,7 @@ When a group array is empty, the container div has zero height and Visual Builde
 
 ### Field Metadata and Defaults
 
-Set `default_value` in `field_metadata` so new instances come pre-populated in the CMS:
+Set `default_value` in `field_metadata` so new instances come pre-populated in the CMS. **This is critical for Visual Builder** — without defaults, newly added group/block instances have empty fields that Visual Builder cannot target for inline editing (there's nothing to click). Always set defaults in the CMS content type schema, not in frontend code:
 
 ```json
 {
@@ -332,13 +354,13 @@ For multiline text:
   "enum": {
     "advanced": false,
     "choices": [
-      { "value": "available" },
+      { "value": "active" },
       { "value": "pending" },
-      { "value": "adopted" }
+      { "value": "archived" }
     ]
   },
   "display_type": "dropdown",
-  "field_metadata": { "default_value": "available", "version": 3 }
+  "field_metadata": { "default_value": "active", "version": 3 }
 }
 ```
 
@@ -389,7 +411,7 @@ The content type must have `is_page: true` and a `url` field for Visual Builder 
     "singleton": true,
     "title": "title",
     "url_pattern": "/:slug",
-    "url_prefix": "/dogs/"
+    "url_prefix": "/"
   }
 }
 ```
@@ -410,11 +432,20 @@ The content type must have `is_page: true` and a `url` field for Visual Builder 
 2. Check that the `$` property exists on the entry after calling `addEditableTags`.
 3. Ensure the content type UID passed to `addEditableTags` matches the actual content type.
 
-### Visual Builder can't add/reorder blocks
+### Visual Builder can't add/reorder blocks or group instances
 
 1. Missing container tag — the wrapper div needs `{...entry.$.sections}`.
-2. Missing item tags — each block needs `{...entry.$[`sections__${index}`]}` from the **parent entry's** `$`.
+2. Missing item tags — each block/group item needs `{...entry.$[`sections__${index}`]}` from the **parent's** `$`.
 3. Content type must have `is_page: true` and a `url` field.
+4. Item wrapper has no clickable area — add padding so Visual Builder can distinguish the wrapper from its children.
+
+### Can't select/delete individual group items
+
+The item wrapper element has no padding, so child elements fill it completely. Visual Builder can't hover/click the wrapper to show delete/reorder controls. Fix: add `p-4` or similar padding to the item wrapper element.
+
+### New group/block instances are empty and uneditable
+
+Fields have no `default_value` in `field_metadata`. Without defaults, newly added instances render as empty — Visual Builder has nothing to click for inline editing. Fix: add `default_value` to every text field in the content type schema via the CMA.
 
 ### URL field shows literal pattern instead of resolved value
 
@@ -422,10 +453,10 @@ If the content type has `url_pattern: "/:slug"`, Contentstack auto-generates `ur
 
 ### Filters send wrong case
 
-Contentstack queries are case-sensitive. Filter values from UI pills ("Small") must be lowercased to match stored values ("small"):
+Contentstack queries are case-sensitive. Filter values from UI pills ("Featured") must be lowercased to match stored values ("featured"):
 
 ```typescript
-query.where("size", QueryOperation.EQUALS, filters.size.toLowerCase());
+query.where("category", QueryOperation.EQUALS, filters.category.toLowerCase());
 ```
 
 ---

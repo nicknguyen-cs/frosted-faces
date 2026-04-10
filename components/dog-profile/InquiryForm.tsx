@@ -2,7 +2,6 @@
 
 import { useActionState, useEffect } from "react";
 import { submitInquiry } from "@/app/dogs/[slug]/actions";
-import { lyticsSend } from "@/lib/lytics";
 
 type InquiryFormProps = {
   dogId: string;
@@ -26,7 +25,7 @@ export default function InquiryForm({ dogId, dogName, dogBreed, dogSize, dogAgeC
 
   useEffect(() => {
     if (state?.success && state.email) {
-      lyticsSend({
+      window.dataLayer?.push({
         event: "inquiry_submitted",
         email: state.email,
         dog_name: dogName,

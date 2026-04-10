@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, type ReactNode } from "react";
-import { lyticsSend } from "@/lib/lytics";
 
 interface TrackClickProps {
   event: string;
@@ -11,7 +10,7 @@ interface TrackClickProps {
 
 export default function TrackClick({ event, data, children }: TrackClickProps) {
   const handleClick = useCallback(() => {
-    lyticsSend({ event, ...data });
+    window.dataLayer?.push({ event, ...data });
   }, [event, data]);
 
   return (

@@ -1,8 +1,8 @@
 "use client";
 
 import { useSearchParams, useRouter } from "next/navigation";
+import { useEffect } from "react";
 import FilterPill from "./FilterPill";
-import { lyticsSend } from "@/lib/lytics";
 
 const FILTER_GROUPS = [
   {
@@ -33,6 +33,21 @@ type FilterBarProps = {
 export default function FilterBar({ availableValues }: FilterBarProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
+  // Re-fetch server data when the URL search params don't match what this
+  // component last rendered with (handles back button, "Back to all dogs" link,
+  // and any other navigation that serves a stale cached page)
+  useEffect(() => {
+    function syncParams() {
+      const urlParams = new URLSearchParams(window.location.search).toString();
+      const rendered = searchParams.toString();
+      if (urlParams !== rendered) {
+        router.refresh();
+      }
+    }
+    syncParams();
+    window.addEventListener("popstate", syncParams);
+    return () => window.removeEventListener("popstate", syncParams);
+  }, [searchParams, router]);
 
   const activeFilters = {
     size: searchParams.get("size") ?? "",
@@ -48,7 +63,7 @@ export default function FilterBar({ availableValues }: FilterBarProps) {
       params.delete(key);
     } else {
       params.set(key, value);
-      lyticsSend({ event: "filter_applied", filter_type: key, filter_value: value.toLowerCase() });
+      window.dataLayer?.push({ event: "filter_applied", filter_type: key, filter_value: value.toLowerCase() });
     }
     router.push(`/dogs?${params.toString()}`);
   }

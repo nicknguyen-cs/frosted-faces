@@ -76,7 +76,7 @@ Minimum viable request:
 The `expr` is an LQL expression. Common patterns:
 - Direct map: `"expr": "raw_field_name"` (maps stream field to profile field as-is)
 - Email validation: `"expr": "email(email)"` (validates email format before writing)
-- Type conversion: `"expr": "tonumber(adoption_fee)"` (string to number)
+- Type conversion: `"expr": "tonumber(price)"` (string to number)
 - Coalesce: `"expr": "oneof(email_address, emailAddress)"` (first non-null wins)
 
 ### 3. Create an Audience (Segment)

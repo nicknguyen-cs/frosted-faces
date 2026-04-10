@@ -1,5 +1,5 @@
-import Link from "next/link";
 import type { EditableTags } from "@/lib/contentstack";
+import BackToDogsLink from "./BackToDogsLink";
 
 type ProfileHeroProps = {
   photo: { url: string; alt: string };
@@ -16,12 +16,7 @@ const statusColors: Record<string, string> = {
 export default function ProfileHero({ photo, status, editTags }: ProfileHeroProps) {
   return (
     <div>
-      <Link
-        href="/dogs"
-        className="inline-flex items-center gap-1 text-sm text-stone hover:text-charcoal transition-colors mb-4"
-      >
-        &larr; Back to all dogs
-      </Link>
+      <BackToDogsLink />
 
       <div className="relative">
         <img

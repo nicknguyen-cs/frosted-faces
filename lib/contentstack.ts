@@ -133,6 +133,55 @@ export interface HomePageEntry {
   $?: EditableTags;
 }
 
+// ─── About Page types ───────────────────────────────────────────────────────
+
+export interface AboutHeroBlock {
+  heading?: string;
+  description?: string;
+  $?: EditableTags;
+}
+
+export interface TwoColumnTextBlock {
+  left_heading?: string;
+  left_body?: string;
+  right_heading?: string;
+  right_items?: string[];
+  $?: EditableTags;
+}
+
+export interface StatsBarBlock {
+  stats?: { value: string; label: string; $?: EditableTags }[];
+  $?: EditableTags;
+}
+
+export interface ValuesGridBlock {
+  heading?: string;
+  values?: { title: string; description: string; $?: EditableTags }[];
+  $?: EditableTags;
+}
+
+export interface CTABannerBlock {
+  heading?: string;
+  description?: string;
+  cta_text?: string;
+  cta_link?: string;
+  $?: EditableTags;
+}
+
+export type AboutPageSection =
+  | { hero: AboutHeroBlock }
+  | { two_column_text: TwoColumnTextBlock }
+  | { stats_bar: StatsBarBlock }
+  | { values_grid: ValuesGridBlock }
+  | { cta_banner: CTABannerBlock };
+
+export interface AboutPageEntry {
+  uid: string;
+  title: string;
+  sections: AboutPageSection[];
+  $?: EditableTags;
+}
+
 export interface LivePreviewParams {
   live_preview?: string;
   entry_uid?: string;
@@ -300,5 +349,23 @@ export async function getFeaturedDogs(
   } catch (error) {
     console.error("Error fetching featured dogs:", error);
     return [];
+  }
+}
+
+export async function getAboutPage(
+  previewParams?: LivePreviewParams
+): Promise<AboutPageEntry | null> {
+  try {
+    const s = previewParams?.live_preview ? createStack() : stack;
+    applyLivePreview(s, previewParams || {}, "about_page");
+
+    const result = await s.contentType("about_page").entry().query().find();
+    const entries = result.entries ?? [];
+    const entry = (entries[0] as unknown as AboutPageEntry) ?? null;
+    if (entry && previewParams?.live_preview) addEditTags(entry, "about_page");
+    return entry;
+  } catch (error) {
+    console.error("Error fetching about page:", error);
+    return null;
   }
 }

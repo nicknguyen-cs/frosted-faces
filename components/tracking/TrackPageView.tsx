@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect } from "react";
-import { lyticsSend } from "@/lib/lytics";
 
 interface TrackPageViewProps {
   event: string;
@@ -10,7 +9,7 @@ interface TrackPageViewProps {
 
 export default function TrackPageView({ event, data }: TrackPageViewProps) {
   useEffect(() => {
-    lyticsSend({ event, ...data });
+    window.dataLayer?.push({ event, ...data });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   return null;
