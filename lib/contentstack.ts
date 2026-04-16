@@ -226,6 +226,7 @@ export interface LivePreviewParams {
   entry_uid?: string;
   content_type_uid?: string;
   personalize_variants?: string;
+  preview_timestamp?: string;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -235,11 +236,12 @@ function applyLivePreview(
   params: LivePreviewParams,
   defaultContentType: string
 ) {
-  if (params.live_preview) {
+  if (params.live_preview || params.preview_timestamp) {
     stackInstance.livePreviewQuery({
-      live_preview: params.live_preview,
+      live_preview: params.live_preview || "",
       contentTypeUid: params.content_type_uid || defaultContentType,
       entryUid: params.entry_uid || "",
+      preview_timestamp: params.preview_timestamp,
     });
   }
 }
@@ -266,7 +268,7 @@ export async function getHomePage(
   previewParams?: LivePreviewParams
 ): Promise<HomePageEntry | null> {
   try {
-    const s = previewParams?.live_preview ? createStack() : stack;
+    const s = previewParams?.live_preview || previewParams?.preview_timestamp ? createStack() : stack;
     applyLivePreview(s, previewParams || {}, "home_page");
 
     const variantParam = previewParams?.personalize_variants;
@@ -299,7 +301,7 @@ export async function getDogs(
   previewParams?: LivePreviewParams
 ): Promise<{ dogs: DogEntry[]; count: number }> {
   try {
-    const s = previewParams?.live_preview ? createStack() : stack;
+    const s = previewParams?.live_preview || previewParams?.preview_timestamp ? createStack() : stack;
     applyLivePreview(s, previewParams || {}, "dog");
 
     const query = s.contentType("dog").entry().query();
@@ -341,7 +343,7 @@ export async function getDogBySlug(
   previewParams?: LivePreviewParams
 ): Promise<DogEntry | null> {
   try {
-    const s = previewParams?.live_preview ? createStack() : stack;
+    const s = previewParams?.live_preview || previewParams?.preview_timestamp ? createStack() : stack;
     applyLivePreview(s, previewParams || {}, "dog");
 
     const url = `/dogs/${slug}`;
@@ -366,7 +368,7 @@ export async function getFeaturedDogs(
   previewParams?: LivePreviewParams
 ): Promise<DogEntry[]> {
   try {
-    const s = previewParams?.live_preview ? createStack() : stack;
+    const s = previewParams?.live_preview || previewParams?.preview_timestamp ? createStack() : stack;
     applyLivePreview(s, previewParams || {}, "dog");
 
     const result = await s
@@ -394,7 +396,7 @@ export async function getFosterPage(
   previewParams?: LivePreviewParams
 ): Promise<FosterPageEntry | null> {
   try {
-    const s = previewParams?.live_preview ? createStack() : stack;
+    const s = previewParams?.live_preview || previewParams?.preview_timestamp ? createStack() : stack;
     applyLivePreview(s, previewParams || {}, "foster_page");
 
     const result = await s.contentType("foster_page").entry().query().find();
@@ -412,7 +414,7 @@ export async function getAboutPage(
   previewParams?: LivePreviewParams
 ): Promise<AboutPageEntry | null> {
   try {
-    const s = previewParams?.live_preview ? createStack() : stack;
+    const s = previewParams?.live_preview || previewParams?.preview_timestamp ? createStack() : stack;
     applyLivePreview(s, previewParams || {}, "about_page");
 
     const result = await s.contentType("about_page").entry().query().find();
