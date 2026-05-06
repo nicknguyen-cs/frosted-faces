@@ -1,7 +1,5 @@
 "use server";
 
-import { prisma } from "@/lib/prisma";
-
 type InquiryResult = {
   success: boolean;
   error?: string;
@@ -21,22 +19,6 @@ export async function submitInquiry(
     return { success: false, error: "All fields are required." };
   }
 
-  try {
-    await prisma.adoptionInquiry.create({
-      data: {
-        dogId,
-        name: name.trim(),
-        email: email.trim(),
-        phone: phone.trim(),
-        message: message.trim(),
-      },
-    });
-
-    return { success: true, email: email.trim() };
-  } catch {
-    return {
-      success: false,
-      error: "Something went wrong. Please try again.",
-    };
-  }
+  // TODO: Wire up to a real backend (CMS entry, email service, etc.)
+  return { success: true, email: email.trim() };
 }
