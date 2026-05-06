@@ -221,6 +221,110 @@ export interface FosterPageEntry {
   $?: EditableTags;
 }
 
+// ─── History Page types ─────────────────────────────────────────────────────
+
+export interface OriginStoryBlock {
+  heading?: string;
+  body?: string;
+  pull_quote?: string;
+  pull_quote_attribution?: string;
+  $?: EditableTags;
+}
+
+export interface TimelineBlock {
+  heading?: string;
+  description?: string;
+  milestones?: {
+    year: string;
+    title: string;
+    description: string;
+    $?: EditableTags;
+  }[];
+  $?: EditableTags;
+}
+
+export interface FounderSpotlightBlock {
+  eyebrow?: string;
+  quote?: string;
+  name?: string;
+  role?: string;
+  photo?: { url: string; title?: string; filename?: string };
+  bio?: string;
+  $?: EditableTags;
+}
+
+export interface GratitudeGridBlock {
+  heading?: string;
+  description?: string;
+  items?: { title: string; description: string; $?: EditableTags }[];
+  $?: EditableTags;
+}
+
+export type HistoryPageSection =
+  | { hero: HeroBlock }
+  | { origin_story: OriginStoryBlock }
+  | { timeline: TimelineBlock }
+  | { founder_spotlight: FounderSpotlightBlock }
+  | { gratitude_grid: GratitudeGridBlock }
+  | { cta_banner: CTABannerBlock };
+
+export interface HistoryPageEntry {
+  uid: string;
+  title: string;
+  sections: HistoryPageSection[];
+  $?: EditableTags;
+}
+
+// ─── Demo Page types ───────────────────────────────────────────────────────
+
+export interface ProcessStepsBlock {
+  heading?: string;
+  description?: string;
+  steps?: {
+    number: number;
+    title: string;
+    description: string;
+    icon: string;
+    duration?: string;
+    $?: EditableTags;
+  }[];
+  $?: EditableTags;
+}
+
+export interface RequirementsBlock {
+  heading?: string;
+  description?: string;
+  items?: { label: string; description?: string; $?: EditableTags }[];
+  $?: EditableTags;
+}
+
+export interface AdoptionFeesBlock {
+  heading?: string;
+  description?: string;
+  tiers?: {
+    title: string;
+    fee: string;
+    includes?: string[];
+    $?: EditableTags;
+  }[];
+  $?: EditableTags;
+}
+
+export type DemoPageSection =
+  | { hero: HeroBlock }
+  | { process_steps: ProcessStepsBlock }
+  | { requirements: RequirementsBlock }
+  | { adoption_fees: AdoptionFeesBlock }
+  | { faq: FAQBlock }
+  | { cta_banner: CTABannerBlock };
+
+export interface DemoPageEntry {
+  uid: string;
+  title: string;
+  sections: DemoPageSection[];
+  $?: EditableTags;
+}
+
 export interface LivePreviewParams {
   live_preview?: string;
   entry_uid?: string;
@@ -406,6 +510,42 @@ export async function getFosterPage(
     return entry;
   } catch (error) {
     console.error("Error fetching foster page:", error);
+    return null;
+  }
+}
+
+export async function getHistoryPage(
+  previewParams?: LivePreviewParams
+): Promise<HistoryPageEntry | null> {
+  try {
+    const s = previewParams?.live_preview || previewParams?.preview_timestamp ? createStack() : stack;
+    applyLivePreview(s, previewParams || {}, "history_page");
+
+    const result = await s.contentType("history_page").entry().query().find();
+    const entries = result.entries ?? [];
+    const entry = (entries[0] as unknown as HistoryPageEntry) ?? null;
+    if (entry && previewParams?.live_preview) addEditTags(entry, "history_page");
+    return entry;
+  } catch (error) {
+    console.error("Error fetching history page:", error);
+    return null;
+  }
+}
+
+export async function getDemoPage(
+  previewParams?: LivePreviewParams
+): Promise<DemoPageEntry | null> {
+  try {
+    const s = previewParams?.live_preview || previewParams?.preview_timestamp ? createStack() : stack;
+    applyLivePreview(s, previewParams || {}, "demo_page");
+
+    const result = await s.contentType("demo_page").entry().query().find();
+    const entries = result.entries ?? [];
+    const entry = (entries[0] as unknown as DemoPageEntry) ?? null;
+    if (entry && previewParams?.live_preview) addEditTags(entry, "demo_page");
+    return entry;
+  } catch (error) {
+    console.error("Error fetching demo page:", error);
     return null;
   }
 }

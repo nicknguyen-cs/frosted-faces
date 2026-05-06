@@ -10,9 +10,9 @@ description: >-
 license: MIT
 metadata:
   author: lytics
-  version: "3.0"
+  version: "3.1"
   source: https://docs.lytics.com/docs/lytics-javascript-tag
-  last_updated: "2026-04-07"
+  last_updated: "2026-04-13"
 ---
 
 # Lytics JavaScript Tag (jstag)
@@ -39,6 +39,16 @@ Paste in your site's `<head>`:
 2. Paste the Lytics JS Tag snippet
 3. Trigger on **All Pages**
 4. Submit and publish
+
+⚠️ **Check before creating.** Before creating a "Lytics CDP - Initialize" tag, list the existing GTM tags (`mcp__gtm__gtm_list_tags`) — on many stacks this tag already exists. Creating a duplicate returns `"Found entity with duplicate name."` If it exists, reference it via `setupTag: [{tagName: "Lytics CDP - Initialize", stopOnSetupFailure: true}]` on your downstream event tags instead of making a new one.
+
+### Account ID format in the `src` URL
+
+Lytics accepts two forms of account identifier in the `src`:
+- **Numeric aid** (e.g., `9671`) — returned as `aid` from `GET /api/account`
+- **32-char hex account ID** (e.g., `b9214b8cf4802609216a47c52888e110`) — returned as `id` from `GET /api/account`
+
+Both work, but within a single stack all tags must use the **same form** or identity merging can misbehave. Before writing a new init tag, inspect the existing "Lytics CDP - Initialize" tag (if present) and match its form exactly. The collect API endpoint `c.lytics.io/c/{account_id}/{stream}` accepts either too.
 
 ### Next.js (via GTM)
 

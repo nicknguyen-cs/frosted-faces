@@ -27,6 +27,7 @@ const experienceMap: Record<string, ExperienceMeta> = {
       "1": { label: "High-Intent Adopters", description: "Conversion-focused messaging" },
       "2": { label: "Active Browsers", description: "Social proof messaging" },
       "3": { label: "First-Time Visitors", description: "Welcome / educational content" },
+      "9": { label: "Likely Foster", description: "Foster-first hero for high-intent foster visitors" },
     },
   },
 };

@@ -9,9 +9,9 @@ description: >-
 license: MIT
 metadata:
   author: lytics
-  version: "2.0"
+  version: "2.1"
   source: https://docs.lytics.com
-  last_updated: "2026-04-08"
+  last_updated: "2026-04-13"
 ---
 
 # Lytics CDP API — Fields, Mappings & Audiences
@@ -50,11 +50,15 @@ Minimum viable request:
 }
 ```
 
-**Data types:** `string`, `integer`, `number`, `boolean`, `date`, `[]string`, `[]time`, `ts[]string`, `map[string]string`
+**Data types:** `string`, `int`, `number`, `bool`, `date`, `[]string`, `[]time`, `ts[]string`, `map[string]string`
+
+⚠️ The API uses `"bool"`, not `"boolean"`. Sending `"type": "boolean"` returns `"Type for Field is not a valid Data Type"`. The Lytics UI labels this "True/False" but the wire type is `bool`.
 
 **Merge operators for strings:** `latest`, `oldest` only. Not `most_recent`.
 
-**Identity fields** (like email) cannot have a merge operator — omit `mergeop` entirely and set `is_identifier: true`.
+**Fields that must omit `mergeop` entirely:**
+- Identity fields (`is_identifier: true`) — returns `"Identifier Field cannot define a Merge Operation"`
+- `bool` fields — returns `"Merge operation 'latest' is invalid for data type 'boolean'. Valid merge operations are: []"` (note the empty brackets — no operator is valid for bool)
 
 Optional fields: `longdesc`, `tags` (string array), `assertions` (email validation, format, length).
 
@@ -173,7 +177,12 @@ FILTER field EXISTS                                 -- use EXISTS field (prefix,
 ### Fields must be published before segments can reference them
 - **Tried:** Creating a segment referencing a draft field
 - **Error:** `segment fields were invalid against existing schema for table user`
-- **Fix:** Publish the schema version in the Lytics UI (Schema > Publish) before creating segments that reference new fields. ⚠️ There may be an API endpoint to publish schema, but it was not discovered in this session.
+- **Fix:** Call `POST /v2/schema/user/publish` with `{"tag": "...", "description": "..."}` before creating segments on `/v2/segment`. Both fields are required — omitting either returns `"Publishing schema changes requires a tag and a description."` For a bootstrap escape hatch when you need the segment UID immediately (e.g., for Contentstack Personalize), `POST /api/segment?force=true` bypasses validation and still returns a stable UID.
+
+### Conductor-enabled accounts break the old /api namespace
+- **Tried:** `POST /api/schema/user/fieldinfo`, `POST /api/query`, `POST /api/schema/user`
+- **Error:** `405 Method Not Allowed`, or `"Endpoint unavailable for accounts with Conductor schema enabled."`
+- **Fix:** On Conductor-enabled accounts, all mutations go through the `/v2` namespace. The `/api/*` endpoints are read-only for schema/segments and should only be used for `GET` or the `?force=true` segment escape hatch. If you see 405s on `POST /api/*`, switch to `/v2` immediately instead of probing more endpoints.
 
 ### Misleading error messages
 The error `segment fields were invalid against existing schema` can mean:
@@ -188,13 +197,35 @@ If you get this error, test with a single known-good field first (e.g., `FILTER 
 ## Order of Operations
 
 ```
-1. Create fields      POST /v2/schema/user/field     (can be parallelized)
+1. Create fields      POST /v2/schema/user/field      (can be parallelized)
 2. Create mappings    POST /v2/schema/user/mapping    (can be parallelized, fields must exist)
-3. Publish schema     Lytics UI: Schema > Publish     (manual step)
+3. Publish schema     POST /v2/schema/user/publish    (API, not UI-only)
 4. Create segments    POST /v2/segment                (fields must be published)
 ```
 
 Fields and mappings can be created in any order relative to each other — both land in draft. But segments validate against the **published** schema, so step 3 must happen before step 4.
+
+### Publish Schema (API)
+
+```
+POST /v2/schema/user/publish
+{
+  "tag": "my-release-tag",
+  "description": "Short description of what changed in this publish"
+}
+```
+
+Both `tag` and `description` are **required**. Omitting either returns `"Publishing schema changes requires a tag and a description."` The response includes `version_number` and `draft_status: "applied"` confirming the publish landed.
+
+### Bootstrap segment before schema publishes (escape hatch)
+
+If another system urgently needs the segment UID (e.g., Contentstack Personalize needs it wired into `lyticsAudiences` before Lytics finishes processing the new field), the **v1** segment endpoint accepts a `?force=true` query parameter that bypasses schema validation:
+
+```
+POST /api/segment?force=true
+```
+
+The segment will be created and return a stable UID even if the field isn't in the published schema yet. The segment stays valid once the field is later published, so the UID you hand to Contentstack keeps working. Use only when the alternative is a blocking wait — prefer the `/v2/segment` endpoint after a proper publish for normal flows.
 
 ---
 
@@ -206,9 +237,11 @@ The API has no batch endpoint. Create fields/mappings/segments one at a time. Ad
 
 ## Manual Steps (Cannot Be Automated)
 
-1. **Publish schema** — After creating fields and mappings via API, publish the schema version in the Lytics UI. Without this, segments cannot reference the new fields.
-2. **Enable API access per audience** — Setting `is_public: true` on segment creation should enable this, but verify in the Lytics UI (Audiences > audience > API Accessible checkbox).
-3. **Surface profile fields client-side** — In Lytics Account Settings, configure which user attributes are returned by the `/personalize` endpoint for use in `entityReady` callbacks.
+1. **Surface profile fields client-side** — In Lytics Account Settings, configure which user attributes are returned by the `/personalize` endpoint for use in `entityReady` callbacks. This is a UI-only toggle.
+
+**Previously listed as manual but actually API-callable:**
+- **Publish schema** — Use `POST /v2/schema/user/publish` with `tag` and `description`. See "Publish Schema (API)" above.
+- **Enable API access per audience** — Set `is_public: true` on segment creation or update. No UI step needed.
 
 ## Reference
 

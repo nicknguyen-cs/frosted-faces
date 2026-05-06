@@ -7,8 +7,8 @@ import type { IStackSdk } from "@contentstack/live-preview-utils";
 
 export default function ContentstackVisualBuilder() {
   useEffect(() => {
-    const isVisualBuilder =
-      new URLSearchParams(window.location.search).has("live_preview");
+    const previewEnabled =
+      process.env.NEXT_PUBLIC_CONTENTSTACK_PREVIEW_ENABLED === "true";
 
     // Restore scroll position saved before SSR reload
     const savedY = sessionStorage.getItem("__vb_scrollY");
@@ -17,7 +17,6 @@ export default function ContentstackVisualBuilder() {
       window.scrollTo(0, parseInt(savedY, 10));
     }
 
-    // Save scroll position before reload so we can restore it
     const saveScroll = () => {
       sessionStorage.setItem("__vb_scrollY", String(window.scrollY));
     };
@@ -30,20 +29,22 @@ export default function ContentstackVisualBuilder() {
       region: process.env.NEXT_PUBLIC_CONTENTSTACK_REGION || "us",
       live_preview: {
         enable: true,
+        preview_token: process.env.NEXT_PUBLIC_CONTENTSTACK_PREVIEW_TOKEN,
         host: "rest-preview.contentstack.com",
       },
     });
 
     ContentstackLivePreview.init({
       ssr: true,
-      enable: isVisualBuilder,
+      enable: previewEnabled,
       mode: "builder",
       stackSdk: stack.config as unknown as IStackSdk,
       stackDetails: {
         apiKey: process.env.NEXT_PUBLIC_CONTENTSTACK_API_KEY!,
         environment: process.env.NEXT_PUBLIC_CONTENTSTACK_ENVIRONMENT!,
       },
-      editButton: { enable: isVisualBuilder },
+      editButton: { enable: true, includeByQueryParameter: true },
+      editInVisualBuilderButton: { enable: false },
       cleanCslpOnProduction: true,
     });
     return () => window.removeEventListener("beforeunload", saveScroll);

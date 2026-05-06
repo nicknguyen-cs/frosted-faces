@@ -13,9 +13,9 @@ description: >-
 license: MIT
 metadata:
   author: contentstack
-  version: "1.1"
+  version: "1.2"
   source: https://www.contentstack.com/docs/personalize
-  last_updated: "2026-04-09"
+  last_updated: "2026-04-13"
 ---
 
 # Contentstack Personalize — Entry Variants
@@ -199,7 +199,9 @@ The payload has three critical parts:
 | Missing `_order` | Variant content not rendered | Include full `_order` array with all base sections |
 | Missing `_metadata.uid` on sections | New block created instead of override | Add `_metadata.uid` matching the base block |
 | Sending all sections | Unchanged sections marked as variant diffs | Only send sections with actual changes |
+| File field passed as object (`{"uid": "blt..."}`) or full asset | `422 "is not file."` on PUT | Pass file fields as **plain UID strings** in variant payloads: `"image": "blt..."` (not `{"uid": "blt..."}` and not the full asset object) |
 | Publishing without `publish_latest_base: true` | `publish_details` not updated, UI shows stale version | Always use `publish_latest_base: true` via MCP tool |
+| Using `/v3/bulk/publish` for a variant | Variant never goes live; base entry republished instead (potentially at version 1, blanking the page) | Never use bulk publish for variants. See "Do NOT use `POST /v3/bulk/publish` for variants" below |
 | Block UIDs changed after content type migration | Variants silently broken — CDA drops overridden blocks | Re-PUT each variant with updated UIDs, then republish (see Migration section) |
 | Renamed block (e.g., `mission_cta` → `cta_banner`) without updating variants | Variant `_change_set` and `_order` reference old block name, merge fails | Update `_change_set` and `_order` to use new block name and UID |
 
@@ -228,33 +230,34 @@ This properly updates:
 - The CDN content (CDA serves the variant)
 - The `publish_details` metadata (UI shows the correct published version)
 
-### Fallback: Bulk Publish REST API
+### ⛔ Do NOT use `POST /v3/bulk/publish` for variants
 
-```bash
-curl -s -X POST "https://api.contentstack.io/v3/bulk/publish" \
-  -H "api_key: {API_KEY}" \
-  -H "authorization: {MANAGEMENT_TOKEN}" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "entries": [
-      {
-        "uid": "{ENTRY_UID}",
-        "content_type": "{CONTENT_TYPE}",
-        "locale": "en-us",
-        "version": {VARIANT_VERSION},
-        "variant_uid": "{VARIANT_UID}"
-      }
-    ],
-    "environments": ["production"],
-    "locales": ["en-us"]
-  }'
+The bulk publish endpoint **does not publish variants**, even though it accepts payloads that look like it should. Every variant of the following patterns has been tested and silently flattens to a base-entry publish:
+
+```json
+// All of these produce type: "entry" in the publish queue, NOT type: "entry_variant"
+{"entries":[{"uid":"{entry}","content_type":"{ct}","variants":[{"uid":"{var}"}]}]}
+{"entries":[{"uid":"{entry}","content_type":"{ct}","variants":[{"uid":"{var}","version":1}],"publish_with_base_entry":false}]}
+{"entries":[{"uid":"{var}","content_type":"{ct}","base_entry_uid":"{entry}"}]}
 ```
 
-**Caveats of the bulk publish REST API:**
-- The `version` field must be the **variant's `_version`** (from `GET /variants/{uid}`), NOT the base entry version
-- Does not support `publish_latest_base` — you must manually ensure the base entry is already published
-- May deliver content to the CDN but **not update `publish_details`** — the UI can show a stale published version
-- Prefer the MCP tool with `publish_latest_base: true` whenever possible
+The endpoint returns `200 "Your bulk publish request is in progress."` and the publish queue logs a successful base-entry publish at whatever `version` you supplied. The `variants` / `base_entry_uid` fields are **dropped**. Consequences:
+
+1. Your variant content never reaches the CDN. The CDA keeps serving base content for that visitor segment.
+2. The `GET /variants/{uid}` response stays at `publish_details: []` because the variant was never actually published.
+3. If you passed `"version": 1` thinking it meant variant version, you just **republished base entry version 1** over the top of the live homepage. This will blank any page where base version 1 predates the current content.
+
+**Always use the MCP tool** (above) for variant publishes. It calls the correct dedicated entry-variant publish endpoint and produces a real `type: "entry_variant"` queue row.
+
+If you absolutely need a raw curl equivalent of the MCP tool, check the publish queue for a successful historic `type: "entry_variant"` row and reverse-engineer the endpoint from the stack's actual traffic — do not guess at bulk publish payload shapes.
+
+### Verifying publish success
+
+`GET /v3/content_types/{ct}/entries/{entry}/variants/{variant}?locale=...` returns `publish_details: null` **even when the variant is successfully published**. Do not use this as the source of truth.
+
+Authoritative checks, in order of preference:
+1. **Publish queue**: `GET /v3/publish-queue` should contain a recent `type: "entry_variant"` row with `entry.uid` = the variant UID, `entry.base_entry_uid` = the base entry, and `publish_details.status: "success"`.
+2. **CDA with variant alias header**: `curl cdn.contentstack.io/v3/content_types/{ct}/entries?environment=production -H "x-cs-variant-uid: cs_personalize_{exp}_{var}"` — check the `publish_details.variants` object in the response.
 
 ### Verify Published Content
 
