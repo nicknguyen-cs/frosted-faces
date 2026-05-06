@@ -39,7 +39,7 @@ You never write these manually. Contentstack's `addEditableTags` utility generat
 
 ## Visual Builder Client Setup (Next.js)
 
-Create a client component that initializes the SDK and include it in the root layout. There are several config keys here whose names are misleading — read the **"How `enable` actually works"** and **"Production gating with one env var"** sections below before changing anything.
+Create a client component that initializes the SDK and include it in the root layout. There are several config keys here whose names are misleading — read the **"How `enable` actually works"** and **"Letting Visual Builder work on prod safely"** sections below before changing anything.
 
 ```tsx
 "use client";
@@ -50,12 +50,6 @@ import type { IStackSdk } from "@contentstack/live-preview-utils";
 
 export default function ContentstackVisualBuilder() {
   useEffect(() => {
-    // Master switch — set to "true" only on dev + dedicated preview deploys.
-    // When false, the SDK boots in disabled mode, strips data-cslp from the
-    // DOM, and renders zero edit UI.
-    const previewEnabled =
-      process.env.NEXT_PUBLIC_CONTENTSTACK_PREVIEW_ENABLED === "true";
-
     const stack = contentstack.stack({
       apiKey: process.env.NEXT_PUBLIC_CONTENTSTACK_API_KEY!,
       deliveryToken: "unused-on-client",
@@ -70,7 +64,7 @@ export default function ContentstackVisualBuilder() {
 
     ContentstackLivePreview.init({
       ssr: true,
-      enable: previewEnabled,
+      enable: true,
       mode: "builder",
       stackSdk: stack.config as unknown as IStackSdk,
       stackDetails: {
@@ -81,7 +75,7 @@ export default function ContentstackVisualBuilder() {
       // `?live_preview` (i.e. when the page is opened from the CMS).
       editButton: { enable: true, includeByQueryParameter: true },
       // The floating "Start editing in Visual Builder" button. Defaults to
-      // true; explicitly disable so it doesn't appear on every page in dev.
+      // true; explicitly disable so it doesn't appear on every page.
       editInVisualBuilderButton: { enable: false },
       cleanCslpOnProduction: true,
     });
@@ -98,33 +92,31 @@ export default function ContentstackVisualBuilder() {
 - `live-preview.js`: `if (config.enable) { /* attach postMessage listeners */ } else if (config.cleanCslpOnProduction) { removeDataCslp() }`
 - `visualBuilder/index.js`: `if (!config.enable) return;` — Visual Builder bridge bails before doing anything
 
-When `enable: false`:
-- No postMessage listeners are attached to the window — the CMS can't reach this page.
-- No edit pencils, no Visual Builder overlay, no "Start editing" button.
-- `data-cslp` attrs are stripped from the DOM (via the `cleanCslpOnProduction` else-branch).
+When `enable: false`, no postMessage listeners attach, no edit pencils render, and `data-cslp` attrs get stripped from the DOM.
 
-**Never gate `enable` on URL params** like `URLSearchParams(location.search).has("live_preview")`. The Visual Builder iframe sometimes loads at the bare URL and receives the hash via postMessage afterwards — by then the SDK has already booted dead. Use one of the deployment-level gates in the next section instead.
+**Never gate `enable` on URL params** like `URLSearchParams(location.search).has("live_preview")`. The Visual Builder iframe sometimes loads at the bare URL and receives the hash via postMessage afterwards — by then the SDK has already booted dead.
 
 ### `cleanCslpOnProduction` is misleading
 
 The SDK contains **no `NODE_ENV` detection**. The flag only takes effect when `enable: false`. Read it as: "If you decide not to enable the SDK, also strip leftover edit tags from the DOM." It does not auto-disable in production.
 
-### Production gating with one env var
+### Letting Visual Builder work on prod safely
 
-The cleanest pattern: one boolean env var controls everything.
+Most teams want marketers to be able to preview against production data — i.e., open the prod site through the CMS and edit. That requires `enable: true` on prod. Without care, that would also leak `data-cslp` attrs and edit UI to every public visitor. There are two layers that prevent leakage on plain page views:
 
-```ts
-const previewEnabled =
-  process.env.NEXT_PUBLIC_CONTENTSTACK_PREVIEW_ENABLED === "true";
-```
+1. **Server-side gating of edit tags** — only call `addEditableTags()` when the request URL has `live_preview` (or `preview_timestamp`):
 
-| Environment | Var value | Result |
-|---|---|---|
-| Local dev | `"true"` | Full Visual Builder, edit pencils, postMessage listener |
-| Launch — preview / staging deploy | `"true"` | Same — for marketers to preview |
-| Launch — production deploy | unset / `"false"` | SDK boots disabled, strips `data-cslp`, zero edit UI |
+   ```ts
+   if (entry && previewParams?.live_preview) addEditTags(entry, "page");
+   ```
 
-In Contentstack Launch this is set per-environment under **Settings → Environment Variables**. Public production sites don't ship the visual builder UI but still serve the right HTML (cslp tags stripped client-side on first paint).
+   On a regular visitor, the server doesn't add `data-cslp` to the HTML at all. Nothing for the SDK to attach to.
+
+2. **`editButton.includeByQueryParameter: true`** — the SDK only renders the inline edit pencils when `?live_preview` is in the URL. Plus `editInVisualBuilderButton: { enable: false }` to suppress the floating Start-editing button entirely.
+
+With both layers in place, you can safely keep `enable: true` on production. Plain visitors get clean HTML and no UI. The CMS iframe (which adds `?live_preview=…` to the URL it loads) gets the full experience.
+
+The trade-off is bundle size: `@contentstack/live-preview-utils` ships to all visitors (~250KB minified). If that's unacceptable, gate `enable` (and ideally the import itself) on a `NEXT_PUBLIC_CONTENTSTACK_PREVIEW_ENABLED` env var per-environment in Launch — but that means marketers can only preview against a dedicated staging URL, not production.
 
 ## Server-Side: addEditableTags
 

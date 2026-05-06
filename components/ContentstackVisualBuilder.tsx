@@ -7,9 +7,6 @@ import type { IStackSdk } from "@contentstack/live-preview-utils";
 
 export default function ContentstackVisualBuilder() {
   useEffect(() => {
-    const previewEnabled =
-      process.env.NEXT_PUBLIC_CONTENTSTACK_PREVIEW_ENABLED === "true";
-
     // Restore scroll position saved before SSR reload
     const savedY = sessionStorage.getItem("__vb_scrollY");
     if (savedY !== null) {
@@ -36,7 +33,7 @@ export default function ContentstackVisualBuilder() {
 
     ContentstackLivePreview.init({
       ssr: true,
-      enable: previewEnabled,
+      enable: true,
       mode: "builder",
       stackSdk: stack.config as unknown as IStackSdk,
       stackDetails: {
