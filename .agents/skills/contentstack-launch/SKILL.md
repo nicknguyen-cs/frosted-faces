@@ -262,6 +262,9 @@ Git-based project creation with `GITPROVIDER` requires a connected Git account i
 ### File upload flow
 The signed URL response includes `fields` (form fields) and `headers` that must be included in the upload request. The `method` field tells you whether to use POST or PUT. Missing these causes silent upload failures.
 
+### Visual Builder env-var gating is usually unnecessary
+A common instinct is to gate the Visual Builder / Live Preview SDK with a per-environment env var (e.g. `NEXT_PUBLIC_PREVIEW_ENABLED=true` on staging, unset on prod). This is rarely the right pattern. Marketers usually want to preview against production data through the CMS, and the SDK can ship enabled to all environments safely as long as UI visibility is gated client-side and edit tags are gated server-side. See the `contentstack-visual-builder` skill for the recommended pattern (`enable: true` always, `editButton.includeByQueryParameter: true`, server-side `addEditableTags()` only when `?live_preview` is in the URL). The trade-off is bundle size — the SDK ships ~250KB to public visitors. Only fall back to per-environment gating if that bundle cost is unacceptable.
+
 ---
 
 ## Reference

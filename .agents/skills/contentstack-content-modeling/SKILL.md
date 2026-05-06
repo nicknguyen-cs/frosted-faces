@@ -1087,6 +1087,19 @@ To reference a Global Field as a block inside a Modular Blocks field, use `refer
 
 ---
 
+## Visual Builder Considerations
+
+When the content type powers a Visual Builder–enabled page, the data shape interacts with how the live-preview SDK walks the entry tree. The `contentstack-visual-builder` skill covers:
+
+- **Three-level CSLP tagging** for modular blocks and multi-value groups (container, item wrapper, inner field) — required for add/delete/reorder controls to appear
+- **Item-wrapper clickability** — wrappers need padding so the SDK can target them; zero-padding wrappers prevent selecting an instance for delete/reorder
+- **Default values matter** — newly added instances render empty without `default_value`, leaving Visual Builder nothing to click for inline editing
+- **Reference vs inline blocks** in a modular blocks list — both are supported, mix freely
+
+One field-shape caveat: a Visual Builder rearrange failure (`Uncaught (in promise) TypeError: t.map is not a function`) was observed once on a content type with `text + multiple:true` deeply nested inside a multi-value group inside a modular block. We could not reproduce it deterministically in isolation. If you hit it, the reactive workaround is to wrap the multi-value scalar in a single-field group: `{ uid: "tags", data_type: "group", multiple: true, schema: [{ uid: "value", data_type: "text" }] }`. Don't apply this preemptively — the simple cases work.
+
+---
+
 ## Reference
 
 - [Content Modeling Best Practices](https://www.contentstack.com/docs/developers/content-modeling/content-modeling-best-practices)

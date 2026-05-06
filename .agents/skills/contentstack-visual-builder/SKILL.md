@@ -636,3 +636,10 @@ When creating/updating content via the CMA:
 4. **Verify on Delivery API** — `GET` from `cdn.contentstack.io` to confirm data is live
 
 Assets and entries have independent publish states. An entry can be published but reference an unpublished asset, which returns `null` on the CDN.
+
+---
+
+## See Also
+
+- **`contentstack-content-modeling`** — JSON field templates, modular block structure, content type best practices. Pair this skill's rendering patterns with that skill's schemas when designing a Visual Builder–enabled page.
+- **`contentstack-launch`** — production environment setup. The Visual Builder SDK can ship enabled to prod (see "Letting Visual Builder work on prod safely" above) — no per-environment env var typically needed.
