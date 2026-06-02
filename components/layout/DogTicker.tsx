@@ -88,9 +88,7 @@ export default async function DogTicker() {
   const duration = Math.max(20, sorted.length * 8);
 
   const items = sorted.map((dog) => {
-    const photo = [...(dog.photos || [])]
-      .sort((a, b) => a.order - b.order)
-      .at(0);
+    const photo = dog.images?.[0];
     const days = daysInShelter(dog.intake_date, dog.date_added);
     const intakeDate = new Date(dog.intake_date || dog.date_added);
     const urgency = getUrgency(days);
@@ -127,7 +125,7 @@ export default async function DogTicker() {
           ))}
           {photo && (
             <img
-              src={photo.url}
+              src={photo}
               alt=""
               className="w-6 h-6 rounded-full object-cover relative z-10"
             />

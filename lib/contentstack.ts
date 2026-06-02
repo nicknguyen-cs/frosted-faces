@@ -26,16 +26,31 @@ export const stack = createStack();
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-export interface DogPhoto {
-  url: string;
-  alt: string;
-  width: number;
-  height: number;
-  order: number;
-}
-
 export interface EditableTags {
   [key: string]: Record<string, string>;
+}
+
+export interface FaqItem {
+  question: string;
+  answer: string;
+  $?: EditableTags;
+}
+
+// SEO / AEO / GEO field group on the `dog` content type. Every field is
+// optional and editor- (or AI-agent-) populated; the frontend falls back
+// gracefully when a field is blank.
+export interface SeoData {
+  meta_title?: string;
+  meta_description?: string;
+  keywords?: string[];
+  canonical_url?: string;
+  og_image?: string;
+  no_index?: boolean;
+  /** Declarative summary written for generative engines (GEO). */
+  ai_summary?: string;
+  /** Question/answer pairs emitted as FAQPage structured data (AEO). */
+  faqs?: FaqItem[];
+  $?: EditableTags;
 }
 
 export interface DogEntry {
@@ -66,10 +81,17 @@ export interface DogEntry {
   vaccinated: boolean;
   microchipped: boolean;
   special_needs?: string;
-  photos: DogPhoto[];
+  /** Ordered list of image URLs. Array order = display order. */
+  images: string[];
   intake_date?: string;
   date_added: string;
+  seo?: SeoData;
   $?: EditableTags;
+}
+
+// Alt text for dog images is derived on the frontend (the CMS stores only URLs).
+export function dogImageAlt(dog: Pick<DogEntry, "title" | "breed">): string {
+  return dog.breed ? `${dog.title}, a ${dog.breed}` : dog.title;
 }
 
 // ─── Modular block types ────────────────────────────────────────────────────
@@ -325,6 +347,70 @@ export interface DemoPageEntry {
   $?: EditableTags;
 }
 
+// ─── Breed Page types ───────────────────────────────────────────────────────
+
+export interface QuickFactsBlock {
+  heading?: string;
+  facts?: { label: string; value: string; icon?: string; $?: EditableTags }[];
+  $?: EditableTags;
+}
+
+export interface AboutBreedBlock {
+  heading?: string;
+  body?: string;
+  pull_quote?: string;
+  pull_quote_attribution?: string;
+  $?: EditableTags;
+}
+
+export interface TemperamentBlock {
+  heading?: string;
+  description?: string;
+  traits?: { title: string; description: string; $?: EditableTags }[];
+  $?: EditableTags;
+}
+
+export interface CareRequirementsBlock {
+  heading?: string;
+  description?: string;
+  cards?: {
+    icon?: string;
+    title: string;
+    description: string;
+    $?: EditableTags;
+  }[];
+  $?: EditableTags;
+}
+
+export interface BreedGalleryBlock {
+  heading?: string;
+  photos?: {
+    image?: { url: string; title?: string; filename?: string };
+    image_url?: string;
+    alt: string;
+    $?: EditableTags;
+  }[];
+  $?: EditableTags;
+}
+
+export type BreedPageSection =
+  | { hero: HeroBlock }
+  | { quick_facts: QuickFactsBlock }
+  | { about_section: AboutBreedBlock }
+  | { temperament: TemperamentBlock }
+  | { care_requirements: CareRequirementsBlock }
+  | { gallery: BreedGalleryBlock }
+  | { cta_banner: CTABannerBlock };
+
+export interface BreedEntry {
+  uid: string;
+  title: string;
+  slug: string;
+  url: string;
+  sections: BreedPageSection[];
+  $?: EditableTags;
+}
+
 export interface LivePreviewParams {
   live_preview?: string;
   entry_uid?: string;
@@ -546,6 +632,30 @@ export async function getDemoPage(
     return entry;
   } catch (error) {
     console.error("Error fetching demo page:", error);
+    return null;
+  }
+}
+
+export async function getBreedBySlug(
+  slug: string,
+  previewParams?: LivePreviewParams
+): Promise<BreedEntry | null> {
+  try {
+    const s = previewParams?.live_preview || previewParams?.preview_timestamp ? createStack() : stack;
+    applyLivePreview(s, previewParams || {}, "breed");
+
+    const result = await s
+      .contentType("breed")
+      .entry()
+      .query()
+      .where("slug", QueryOperation.EQUALS, slug)
+      .find();
+    const entries = result.entries ?? [];
+    const entry = (entries[0] as unknown as BreedEntry) ?? null;
+    if (entry && previewParams?.live_preview) addEditTags(entry, "breed");
+    return entry;
+  } catch (error) {
+    console.error("Error fetching breed:", error);
     return null;
   }
 }

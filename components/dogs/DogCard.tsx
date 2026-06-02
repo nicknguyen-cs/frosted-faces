@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { dogImageAlt } from "@/lib/contentstack";
 import type { DogEntry } from "@/lib/contentstack";
 
 interface DogCardProps {
@@ -6,9 +7,7 @@ interface DogCardProps {
 }
 
 export default function DogCard({ dog }: DogCardProps) {
-  const primaryPhoto = [...(dog.photos || [])]
-    .sort((a, b) => a.order - b.order)
-    .at(0);
+  const primaryPhoto = dog.images?.[0];
 
   const showBadge = dog.status === "pending" || dog.status === "adopted";
 
@@ -17,8 +16,8 @@ export default function DogCard({ dog }: DogCardProps) {
       <div className="relative aspect-[4/5] overflow-hidden rounded-2xl bg-sand-200">
         {primaryPhoto && (
           <img
-            src={primaryPhoto.url}
-            alt={primaryPhoto.alt}
+            src={primaryPhoto}
+            alt={dogImageAlt(dog)}
             className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
           />
         )}

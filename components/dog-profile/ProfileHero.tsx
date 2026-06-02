@@ -2,7 +2,8 @@ import type { EditableTags } from "@/lib/contentstack";
 import BackToDogsLink from "./BackToDogsLink";
 
 type ProfileHeroProps = {
-  photo: { url: string; alt: string };
+  src: string;
+  alt: string;
   status: string;
   editTags?: EditableTags;
 };
@@ -13,15 +14,15 @@ const statusColors: Record<string, string> = {
   adopted: "bg-terracotta text-white",
 };
 
-export default function ProfileHero({ photo, status, editTags }: ProfileHeroProps) {
+export default function ProfileHero({ src, alt, status, editTags }: ProfileHeroProps) {
   return (
     <div>
       <BackToDogsLink />
 
       <div className="relative">
         <img
-          src={photo.url}
-          alt={photo.alt}
+          src={src}
+          alt={alt}
           className="w-full max-h-[70vh] object-cover rounded-3xl"
         />
         <span

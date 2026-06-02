@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { getDogBySlug } from "@/lib/contentstack";
+import { getDogBySlug, dogImageAlt } from "@/lib/contentstack";
 import type { LivePreviewParams } from "@/lib/contentstack";
 import ProfileHero from "@/components/dog-profile/ProfileHero";
 import AdoptionCTA from "@/components/dog-profile/AdoptionCTA";
@@ -12,6 +12,8 @@ import CompatibilityChart from "@/components/dog-profile/CompatibilityChart";
 import MedicalBadges from "@/components/dog-profile/MedicalBadges";
 import InquiryForm from "@/components/dog-profile/InquiryForm";
 import TrackPageView from "@/components/tracking/TrackPageView";
+import JsonLd from "@/components/seo/JsonLd";
+import { buildDogMetadata, buildDogJsonLd } from "@/lib/seo";
 
 
 
@@ -28,15 +30,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     return { title: "Dog not found" };
   }
 
-  return {
-    title: `Adopt ${dog.title} — Frosted Faces`,
-    description: dog.tagline,
-    openGraph: {
-      title: `Adopt ${dog.title}`,
-      description: dog.tagline,
-      images: dog.photos?.[0] ? [{ url: dog.photos[0].url }] : [],
-    },
-  };
+  // Metadata is driven by the Contentstack `seo` field group, with fallback
+  // to the dog's own content when those fields are blank.
+  return buildDogMetadata(dog);
 }
 
 export default async function DogProfilePage({ params, searchParams }: PageProps) {
@@ -45,14 +41,15 @@ export default async function DogProfilePage({ params, searchParams }: PageProps
 
   if (!dog) notFound();
 
-  const sortedPhotos = [...(dog.photos || [])].sort((a, b) => a.order - b.order);
-  const heroPhoto = sortedPhotos[0] ?? {
-    url: "/placeholder-dog.jpg",
-    alt: dog.title,
-  };
+  const images = dog.images ?? [];
+  const altBase = dogImageAlt(dog);
+  const heroSrc = images[0] ?? "/placeholder-dog.jpg";
 
   return (
     <>
+      {/* Structured data (SEO rich results + AEO FAQPage + GEO Pet entity),
+          all sourced from the Contentstack `seo` field group. */}
+      <JsonLd data={buildDogJsonLd(dog)} />
 
       <main className="mx-auto w-full max-w-4xl px-5 py-8 space-y-10">
         <TrackPageView
@@ -66,7 +63,7 @@ export default async function DogProfilePage({ params, searchParams }: PageProps
             slug,
           }}
         />
-        <ProfileHero photo={heroPhoto} status={dog.status} editTags={dog.$} />
+        <ProfileHero src={heroSrc} alt={altBase} status={dog.status} editTags={dog.$} />
 
         <div>
           <h1
@@ -104,7 +101,7 @@ export default async function DogProfilePage({ params, searchParams }: PageProps
           editTags={dog.$}
         />
 
-        <PhotoGallery photos={sortedPhotos} />
+        <PhotoGallery images={images} alt={altBase} />
 
         <BioSection name={dog.title} bio={dog.bio} editTags={dog.$} />
 

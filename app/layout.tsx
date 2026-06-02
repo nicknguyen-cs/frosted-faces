@@ -8,6 +8,8 @@ import ContentstackVisualBuilder from "@/components/ContentstackVisualBuilder";
 import DogTicker from "@/components/layout/DogTicker";
 import { PersonalizeProvider } from "@/components/PersonalizeContext";
 import PersonalizeBadge from "@/components/PersonalizeBadge";
+import JsonLd from "@/components/seo/JsonLd";
+import { buildOrganizationJsonLd } from "@/lib/seo";
 
 const GTM_ID = process.env.NEXT_PUBLIC_GTM_ID;
 
@@ -24,6 +26,9 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"
+  ),
   title: "Frosted Faces — Senior Dog Adoption",
   description:
     "Frosted Faces Foundation rescues and rehomes senior dogs. Browse adoptable dogs and give a frosted face a warm home.",
@@ -51,6 +56,7 @@ export default function RootLayout({
             />
           </noscript>
         )}
+        <JsonLd data={[buildOrganizationJsonLd()]} />
         <ContentstackVisualBuilder />
         <PersonalizeProvider>
           <Navbar />

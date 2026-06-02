@@ -29,6 +29,11 @@ const links: NavItem[] = [
         href: "/about",
         description: "Mission, values, and the people behind the work",
       },
+      {
+        label: "Border Collie",
+        href: "/breeds/border-collie",
+        description: "Breed spotlight — temperament, care, and what to expect",
+      },
     ],
   },
 ];
