@@ -21,13 +21,11 @@ export default async function HomePage({ searchParams }: PageProps) {
 
   if (!homePage) return null;
 
-  // Pre-fetch featured dogs if a featured_dogs block exists
+  // Pre-fetch featured dogs if a featured_dogs block exists: curated
+  // references first, newest available dogs fill up to the limit.
   const featuredBlock = homePage.sections?.find((s) => "featured_dogs" in s);
-  const dogLimit = featuredBlock && "featured_dogs" in featuredBlock
-    ? (featuredBlock.featured_dogs.limit ?? 3)
-    : 3;
-  const dogs = featuredBlock
-    ? await getFeaturedDogs(dogLimit, params)
+  const dogs = featuredBlock && "featured_dogs" in featuredBlock
+    ? await getFeaturedDogs(featuredBlock.featured_dogs, params)
     : [];
 
     console.log("Home page data:", homePage);

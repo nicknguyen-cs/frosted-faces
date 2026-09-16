@@ -124,6 +124,13 @@ export interface HowItWorksBlock {
 
 export interface FeaturedDogsBlock {
   heading?: string;
+  /**
+   * Editor-curated dogs, shown first in this order. Resolved to full entries
+   * via includeReference("sections.featured_dogs.dogs") in getHomePage;
+   * unresolved references arrive as bare { uid } objects and are ignored.
+   */
+  dogs?: Array<DogEntry | { uid: string; _content_type_uid?: string }>;
+  /** Target number of cards. Curated dogs come first; the newest available dogs fill the rest. */
   limit?: number;
   $?: EditableTags;
 }
@@ -490,7 +497,11 @@ export async function getHomePage(
 
     const variantParam = previewParams?.personalize_variants;
 
-    const entries_api = s.contentType("home_page").entry();
+    // Resolve the featured_dogs block's curated references in the same call.
+    const entries_api = s
+      .contentType("home_page")
+      .entry()
+      .includeReference("sections.featured_dogs.dogs");
 
     if (variantParam) {
       const variantAlias =
@@ -580,33 +591,62 @@ export async function getDogBySlug(
   }
 }
 
+/** Type guard: a curated reference that was resolved to a full dog entry. */
+function isResolvedDog(
+  d: NonNullable<FeaturedDogsBlock["dogs"]>[number]
+): d is DogEntry {
+  return typeof (d as DogEntry).slug === "string";
+}
+
+/**
+ * Hybrid featured-dogs selection:
+ *  1. Editor-curated dogs from the block (in editor order), skipping any that
+ *     are no longer available so an adopted dog never lingers on the homepage.
+ *  2. If that leaves fewer than `limit` cards, top up with the newest
+ *     available dogs not already shown.
+ * With no curated dogs this degrades to the original "newest available" query.
+ */
 export async function getFeaturedDogs(
-  limit = 3,
+  block: Pick<FeaturedDogsBlock, "dogs" | "limit">,
   previewParams?: LivePreviewParams
 ): Promise<DogEntry[]> {
-  try {
-    const s = previewParams?.live_preview || previewParams?.preview_timestamp ? createStack() : stack;
-    applyLivePreview(s, previewParams || {}, "dog");
+  const limit = block.limit ?? 3;
+  const seen = new Set<string>();
+  const curated = (block.dogs ?? [])
+    .filter(isResolvedDog)
+    .filter((d) => d.status === "available")
+    .filter((d) => !seen.has(d.uid) && seen.add(d.uid));
+  const needed = Math.max(0, limit - curated.length);
 
-    const result = await s
-      .contentType("dog")
-      .entry()
-      .query()
-      .where("status", QueryOperation.EQUALS, "available")
-      .orderByDescending("date_added")
-      .limit(limit)
-      .find();
-    const entries = (result.entries ?? []) as unknown as DogEntry[];
-    if (previewParams?.live_preview) {
-      for (const entry of entries) {
-        addEditTags(entry, "dog");
-      }
+  let fallback: DogEntry[] = [];
+  if (needed > 0) {
+    try {
+      const s = previewParams?.live_preview || previewParams?.preview_timestamp ? createStack() : stack;
+      applyLivePreview(s, previewParams || {}, "dog");
+
+      // Over-fetch by the curated count so filtering out already-shown dogs
+      // still leaves enough to fill the remaining slots.
+      const result = await s
+        .contentType("dog")
+        .entry()
+        .query()
+        .where("status", QueryOperation.EQUALS, "available")
+        .orderByDescending("date_added")
+        .limit(needed + seen.size)
+        .find();
+      fallback = ((result.entries ?? []) as unknown as DogEntry[])
+        .filter((d) => !seen.has(d.uid))
+        .slice(0, needed);
+    } catch (error) {
+      console.error("Error fetching featured dogs:", error);
     }
-    return entries;
-  } catch (error) {
-    console.error("Error fetching featured dogs:", error);
-    return [];
   }
+
+  const dogs = [...curated, ...fallback];
+  if (previewParams?.live_preview) {
+    for (const entry of dogs) addEditTags(entry, "dog");
+  }
+  return dogs;
 }
 
 export async function getFosterPage(
