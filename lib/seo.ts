@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import type { DogEntry } from "@/lib/contentstack";
+import type { DogEntry, SeoData } from "@/lib/contentstack";
 
 // Absolute site origin, used for canonical + Open Graph URLs and JSON-LD @id.
 // Override per-environment with NEXT_PUBLIC_SITE_URL (e.g. https://frostedfaces.org).
@@ -159,8 +159,9 @@ function breadcrumbJsonLd(dog: DogEntry): JsonLd {
 }
 
 // schema.org/FAQPage — powers answer-engine results and voice search (AEO).
-function faqJsonLd(dog: DogEntry): JsonLd | null {
-  const faqs = (dog.seo?.faqs ?? []).filter((f) => f.question && f.answer);
+// Generic over any `seo` field group (dog or blog_post share the global field).
+function faqPageJsonLd(seo?: SeoData): JsonLd | null {
+  const faqs = (seo?.faqs ?? []).filter((f) => f.question && f.answer);
   if (faqs.length === 0) return null;
   return {
     "@context": "https://schema.org",
@@ -171,6 +172,10 @@ function faqJsonLd(dog: DogEntry): JsonLd | null {
       acceptedAnswer: { "@type": "Answer", text: f.answer },
     })),
   };
+}
+
+function faqJsonLd(dog: DogEntry): JsonLd | null {
+  return faqPageJsonLd(dog.seo);
 }
 
 // schema.org/AnimalShelter — establishes the rescue as a recognized local
@@ -193,4 +198,111 @@ export function buildDogJsonLd(dog: DogEntry): JsonLd[] {
   return [dogProductJsonLd(dog), breadcrumbJsonLd(dog), faqJsonLd(dog)].filter(
     Boolean
   ) as JsonLd[];
+}
+
+// ─── Article (blog post) SEO / AEO / GEO ──────────────────────────────────────
+//
+// Parameterized equivalents of the dog builders, driven by the shared `seo`
+// global field. Used by /blog/[slug]. Same graceful-fallback philosophy: a post
+// stays optimized even before the SEO fields are filled in.
+
+interface ArticleSeoInput {
+  seo?: SeoData;
+  /** Site-relative path, e.g. /blog/adopting-a-senior-dog */
+  path: string;
+  title: string;
+  /** Used when seo.meta_description is blank. */
+  fallbackDescription?: string;
+  /** Used when seo.og_image is blank. */
+  fallbackImage?: string;
+  datePublished?: string;
+  author?: string;
+}
+
+export function buildArticleMetadata(input: ArticleSeoInput): Metadata {
+  const seo = input.seo ?? {};
+  const title = seo.meta_title || `${input.title} — ${ORG_NAME}`;
+  const description = seo.meta_description || input.fallbackDescription;
+  const canonical = seo.canonical_url
+    ? absoluteUrl(seo.canonical_url)
+    : input.path;
+
+  const imageUrl = seo.og_image || input.fallbackImage;
+  const images = imageUrl ? [{ url: imageUrl, alt: input.title }] : [];
+
+  return {
+    title,
+    description,
+    keywords: seo.keywords?.length ? seo.keywords : undefined,
+    alternates: { canonical },
+    robots: seo.no_index ? { index: false, follow: false } : undefined,
+    openGraph: {
+      type: "article",
+      title,
+      description,
+      url: canonical,
+      siteName: ORG_NAME,
+      images,
+      publishedTime: input.datePublished,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: images.map((i) => i.url),
+    },
+    // See buildDogMetadata: illustrative GEO hook. The functional GEO path is
+    // ai_summary -> crawlable Article.description below.
+    other: seo.ai_summary ? { "ai:summary": seo.ai_summary } : {},
+  };
+}
+
+// schema.org/Article — the durable entity an AI engine can cite for an
+// evergreen guide. ai_summary feeds the crawlable description (GEO).
+function articleJsonLd(input: ArticleSeoInput): JsonLd {
+  const seo = input.seo ?? {};
+  const url = absoluteUrl(input.path);
+  return {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "@id": `${url}#article`,
+    mainEntityOfPage: url,
+    headline: seo.meta_title || input.title,
+    description: seo.ai_summary || seo.meta_description || input.fallbackDescription,
+    image: seo.og_image || input.fallbackImage || undefined,
+    datePublished: input.datePublished,
+    author: { "@type": "Organization", name: input.author || ORG_NAME },
+    publisher: {
+      "@type": "AnimalShelter",
+      name: ORG_NAME,
+      url: SITE_URL,
+    },
+  };
+}
+
+function articleBreadcrumbJsonLd(input: ArticleSeoInput): JsonLd {
+  const item = (name: string, path: string, position: number) => ({
+    "@type": "ListItem",
+    position,
+    name,
+    item: absoluteUrl(path),
+  });
+  return {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      item("Home", "/", 1),
+      item("Blog", "/blog", 2),
+      item(input.title, input.path, 3),
+    ],
+  };
+}
+
+// Returns every JSON-LD document to embed on a blog post page.
+export function buildArticleJsonLd(input: ArticleSeoInput): JsonLd[] {
+  return [
+    articleJsonLd(input),
+    articleBreadcrumbJsonLd(input),
+    faqPageJsonLd(input.seo),
+  ].filter(Boolean) as JsonLd[];
 }

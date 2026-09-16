@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { dogImageAlt } from "@/lib/contentstack";
+import { dogImageAlt } from "@/lib/dog-image";
 import type { DogEntry } from "@/lib/contentstack";
 
 interface DogCardProps {

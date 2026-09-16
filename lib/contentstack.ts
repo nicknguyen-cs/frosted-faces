@@ -89,11 +89,6 @@ export interface DogEntry {
   $?: EditableTags;
 }
 
-// Alt text for dog images is derived on the frontend (the CMS stores only URLs).
-export function dogImageAlt(dog: Pick<DogEntry, "title" | "breed">): string {
-  return dog.breed ? `${dog.title}, a ${dog.breed}` : dog.title;
-}
-
 // ─── Modular block types ────────────────────────────────────────────────────
 
 export interface HeroBlock {
@@ -411,6 +406,38 @@ export interface BreedEntry {
   $?: EditableTags;
 }
 
+// ─── Blog Post types ─────────────────────────────────────────────────────────
+
+// Structured rules the AgentOS agent uses to pick available dogs to associate
+// with a post. Mirrors the `dog` filter fields; a blank field is unconstrained.
+export interface DogMatchCriteria {
+  age_category?: string;
+  size?: string;
+  energy_level?: string;
+  good_with_dogs?: string;
+  good_with_cats?: string;
+  good_with_kids?: string;
+  $?: EditableTags;
+}
+
+export interface BlogPostEntry {
+  uid: string;
+  title: string;
+  url: string;
+  slug: string;
+  excerpt?: string;
+  author?: string;
+  hero_image?: { url: string; title?: string; filename?: string };
+  published_date?: string;
+  seo?: SeoData;
+  /** Resolved via includeReference("associated_dogs"). AgentOS-populated. */
+  associated_dogs?: DogEntry[];
+  match_criteria?: DogMatchCriteria;
+  /** HTML RTE article body (HTML string). */
+  body?: string;
+  $?: EditableTags;
+}
+
 export interface LivePreviewParams {
   live_preview?: string;
   entry_uid?: string;
@@ -623,6 +650,7 @@ export async function getDemoPage(
 ): Promise<DemoPageEntry | null> {
   try {
     const s = previewParams?.live_preview || previewParams?.preview_timestamp ? createStack() : stack;
+    console.log("Preview params:", previewParams);
     applyLivePreview(s, previewParams || {}, "demo_page");
 
     const result = await s.contentType("demo_page").entry().query().find();
@@ -656,6 +684,58 @@ export async function getBreedBySlug(
     return entry;
   } catch (error) {
     console.error("Error fetching breed:", error);
+    return null;
+  }
+}
+
+export async function getBlogPosts(
+  previewParams?: LivePreviewParams
+): Promise<BlogPostEntry[]> {
+  try {
+    const s = previewParams?.live_preview || previewParams?.preview_timestamp ? createStack() : stack;
+    applyLivePreview(s, previewParams || {}, "blog_post");
+
+    const result = await s
+      .contentType("blog_post")
+      .entry()
+      .query()
+      .orderByDescending("published_date")
+      .find();
+    const entries = (result.entries ?? []) as unknown as BlogPostEntry[];
+    if (previewParams?.live_preview) {
+      for (const entry of entries) addEditTags(entry, "blog_post");
+    }
+    return entries;
+  } catch (error) {
+    console.error("Error fetching blog posts:", error);
+    return [];
+  }
+}
+
+export async function getBlogBySlug(
+  slug: string,
+  previewParams?: LivePreviewParams
+): Promise<BlogPostEntry | null> {
+  try {
+    const s = previewParams?.live_preview || previewParams?.preview_timestamp ? createStack() : stack;
+    applyLivePreview(s, previewParams || {}, "blog_post");
+
+    const url = `/blog/${slug}`;
+    // includeReference resolves `associated_dogs` to full dog entries; without
+    // it the SDK returns bare uids. The frontend then filters to status:available.
+    const result = await s
+      .contentType("blog_post")
+      .entry()
+      .includeReference("associated_dogs")
+      .query()
+      .where("url", QueryOperation.EQUALS, url)
+      .find();
+    const entries = result.entries ?? [];
+    const entry = (entries[0] as unknown as BlogPostEntry) ?? null;
+    if (entry && previewParams?.live_preview) addEditTags(entry, "blog_post");
+    return entry;
+  } catch (error) {
+    console.error("Error fetching blog post:", error);
     return null;
   }
 }

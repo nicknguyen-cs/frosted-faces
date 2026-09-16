@@ -11,6 +11,7 @@ const links: NavItem[] = [
   { label: "Home", href: "/" },
   { label: "Our Dogs", href: "/dogs" },
   { label: "Foster", href: "/foster" },
+  { label: "Blog", href: "/blog" },
   {
     label: "Demos",
     children: [

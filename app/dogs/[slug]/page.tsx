@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { getDogBySlug, dogImageAlt } from "@/lib/contentstack";
+import { getDogBySlug } from "@/lib/contentstack";
+import { dogImageAlt } from "@/lib/dog-image";
 import type { LivePreviewParams } from "@/lib/contentstack";
 import ProfileHero from "@/components/dog-profile/ProfileHero";
 import AdoptionCTA from "@/components/dog-profile/AdoptionCTA";
@@ -14,6 +15,8 @@ import InquiryForm from "@/components/dog-profile/InquiryForm";
 import TrackPageView from "@/components/tracking/TrackPageView";
 import JsonLd from "@/components/seo/JsonLd";
 import { buildDogMetadata, buildDogJsonLd } from "@/lib/seo";
+import SeoDemoWidget from "@/components/seo/SeoDemoWidget";
+import { buildBeforePrompt, buildAfterPrompt } from "@/lib/demo";
 
 
 
@@ -45,11 +48,24 @@ export default async function DogProfilePage({ params, searchParams }: PageProps
   const altBase = dogImageAlt(dog);
   const heroSrc = images[0] ?? "/placeholder-dog.jpg";
 
+  // Demo-only: ?demo=seo shows the before/after "what an AI engine sees" widget.
+  const showDemo =
+    (previewParams as Record<string, string | undefined>).demo === "seo";
+
   return (
     <>
       {/* Structured data (SEO rich results + AEO FAQPage + GEO Pet entity),
           all sourced from the Contentstack `seo` field group. */}
       <JsonLd data={buildDogJsonLd(dog)} />
+
+      {showDemo && (
+        <SeoDemoWidget
+          before={buildBeforePrompt(dog)}
+          after={buildAfterPrompt(dog)}
+          dogName={dog.title}
+          optimized={Boolean(dog.seo?.ai_summary || dog.seo?.faqs?.length)}
+        />
+      )}
 
       <main className="mx-auto w-full max-w-4xl px-5 py-8 space-y-10">
         <TrackPageView

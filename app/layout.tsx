@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans, Inter } from "next/font/google";
+import { Plus_Jakarta_Sans, Inter, Source_Serif_4 } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
 import Navbar from "@/components/layout/Navbar";
@@ -25,6 +25,14 @@ const inter = Inter({
   weight: ["400", "500"],
 });
 
+// Editorial reading serif, used for long-form article body (e.g. /blog).
+const sourceSerif = Source_Serif_4({
+  variable: "--font-reading",
+  subsets: ["latin"],
+  weight: ["400", "600"],
+  style: ["normal", "italic"],
+});
+
 export const metadata: Metadata = {
   metadataBase: new URL(
     process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"
@@ -43,7 +51,7 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${plusJakarta.variable} ${inter.variable} h-full antialiased`}
+      className={`${plusJakarta.variable} ${inter.variable} ${sourceSerif.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-sand-50 font-body text-charcoal">
         {GTM_ID && (

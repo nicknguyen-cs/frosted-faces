@@ -14,8 +14,10 @@ interface PageProps {
 }
 
 export default async function HomePage({ searchParams }: PageProps) {
+  console.log("Hello World")
   const params = await searchParams;
   const homePage = await getHomePage(params);
+    console.log("Preview params:", params);
 
   if (!homePage) return null;
 
@@ -27,6 +29,8 @@ export default async function HomePage({ searchParams }: PageProps) {
   const dogs = featuredBlock
     ? await getFeaturedDogs(dogLimit, params)
     : [];
+
+    console.log("Home page data:", homePage);
 
   return (
     <div {...(homePage.$ && homePage.$.sections)}>
