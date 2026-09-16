@@ -604,18 +604,23 @@ function isResolvedDog(
  *     are no longer available so an adopted dog never lingers on the homepage.
  *  2. If that leaves fewer than `limit` cards, top up with the newest
  *     available dogs not already shown.
+ * Never returns more than FEATURED_DOGS_MAX cards, whatever the CMS says.
  * With no curated dogs this degrades to the original "newest available" query.
  */
+/** Hard ceiling on featured cards, regardless of the CMS limit or curated count. */
+export const FEATURED_DOGS_MAX = 6;
+
 export async function getFeaturedDogs(
   block: Pick<FeaturedDogsBlock, "dogs" | "limit">,
   previewParams?: LivePreviewParams
 ): Promise<DogEntry[]> {
-  const limit = block.limit ?? 3;
+  const limit = Math.min(Math.max(block.limit ?? 3, 1), FEATURED_DOGS_MAX);
   const seen = new Set<string>();
   const curated = (block.dogs ?? [])
     .filter(isResolvedDog)
     .filter((d) => d.status === "available")
-    .filter((d) => !seen.has(d.uid) && seen.add(d.uid));
+    .filter((d) => !seen.has(d.uid) && seen.add(d.uid))
+    .slice(0, FEATURED_DOGS_MAX);
   const needed = Math.max(0, limit - curated.length);
 
   let fallback: DogEntry[] = [];
