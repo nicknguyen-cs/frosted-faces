@@ -600,8 +600,8 @@ function isResolvedDog(
 
 /**
  * Hybrid featured-dogs selection:
- *  1. Editor-curated dogs from the block (in editor order), skipping any that
- *     are no longer available so an adopted dog never lingers on the homepage.
+ *  1. Editor-curated dogs from the block (in editor order). Adopted dogs are
+ *     skipped so a placed dog never lingers; pending dogs stay (with badge).
  *  2. If that leaves fewer than `limit` cards, top up with the newest
  *     available dogs not already shown.
  * Never returns more than FEATURED_DOGS_MAX cards, whatever the CMS says.
@@ -618,7 +618,9 @@ export async function getFeaturedDogs(
   const seen = new Set<string>();
   const curated = (block.dogs ?? [])
     .filter(isResolvedDog)
-    .filter((d) => d.status === "available")
+    // Curated dogs may be "pending" (DogCard shows the badge); only adopted
+    // dogs are dropped so a placed dog never lingers on the homepage.
+    .filter((d) => d.status !== "adopted")
     .filter((d) => !seen.has(d.uid) && seen.add(d.uid))
     .slice(0, FEATURED_DOGS_MAX);
   const needed = Math.max(0, limit - curated.length);
